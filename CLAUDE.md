@@ -25,12 +25,17 @@ Requires **Go 1.25+**. Pinned to **Syncthing v1.30.0**.
 **Two-layer design:**
 
 - **`cmd/`** — Cobra CLI commands (`init`, `pair`, `run`, `status`, `id`). Each command is a thin shell that delegates to `engine/`.
+  - `root.go` — Default (no subcommand): starts engine + system tray. Auto-inits on first run.
+  - `run.go` — Headless/CLI mode (`plop run`): engine only, no tray.
 - **`engine/`** — Wraps `syncthing.App` with three files:
-  - `engine.go` — `Engine` struct: `New()` → `Start()` → `Stop()` lifecycle. Uses a `suture.Supervisor` for early services.
-  - `cert.go` — TLS cert generation/loading, device ID derivation.
+  - `engine.go` — `Engine` struct: `New()` → `Start()` → `Stop()` lifecycle. `New()` auto-initializes (certs, config, sync folder) if not already set up.
+  - `cert.go` — TLS cert generation/loading (`LoadOrGenerateCert`), device ID derivation.
   - `config.go` — Builds Syncthing XML config, `AddPeer()` for pairing.
+- **`tray/`** — System tray UI (Open Sync Folder, Open Settings, Exit). `tray.Run()` blocks; `systray.Quit()` unblocks it.
 
 **Data directory:** `~/Library/Application Support/plop` (overridable with `--home`), contains `cert.pem`, `key.pem`, `config.xml`, `db/`.
+
+**Startup flow:** `engine.New()` auto-creates data dir, certs, and default config if missing → `engine.Start()` → tray blocks on `systray.Run()` → Exit/signal/engine-exit calls `systray.Quit()` → `defer eng.Stop()` cleans up.
 
 ## Critical Gotchas
 
