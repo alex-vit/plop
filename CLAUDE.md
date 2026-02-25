@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-gosync is a P2P file sync CLI — a "dumbed down Syncthing" that embeds Syncthing's Go libraries (`lib/`) directly as a library, not as a subprocess wrapper. LAN-only discovery, single sync folder, Dropbox-style UX.
+gosync is a P2P file sync CLI — a "dumbed down Syncthing" that embeds Syncthing's Go libraries (`lib/`) directly as a library, not as a subprocess wrapper. LAN + WAN discovery (global announce, relay, NAT traversal), single sync folder, Dropbox-style UX.
 
 ## Build & Test
 
@@ -37,7 +37,7 @@ Requires **Go 1.25+**. Pinned to **Syncthing v1.30.0**.
 - **Cert CN must be `"syncthing"`** — BEP protocol validates this during TLS handshake; any other CN causes connection failure.
 - **Config wrapper + event logger must run as suture services BEFORE `App.Start()`** — Syncthing's `startup()` calls `cfg.Modify()` which deadlocks if the wrapper's `Serve()` loop isn't active.
 - **GUI must be enabled** (bound to `127.0.0.1:0`) for the REST API that `status` uses.
-- **Listen addresses use port 0** (`tcp://0.0.0.0:0`, `quic://0.0.0.0:0`) — allows multiple instances; LAN discovery broadcasts actual addresses.
+- **Listen addresses use port 0** (`tcp://0.0.0.0:0`, `quic://0.0.0.0:0`, plus relay URL) — allows multiple instances; LAN discovery broadcasts actual addresses, WAN uses global announce + relays.
 - **`FSWatcherDelayS: 10` must be set explicitly** — Go zero-value may not trigger Syncthing's default.
 - Use `syncthing.LoadConfigAtStartup()` to load config (handles migrations and defaults).
 - Use `backend.TuningAuto` for `backend.Open()`, not `config.TuningAuto`.

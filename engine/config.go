@@ -12,7 +12,8 @@ import (
 )
 
 // NewConfig creates a minimal Syncthing configuration for gosync:
-// single folder, LAN-only, no relay, no global discovery.
+// single folder, LAN + WAN discovery, relay-capable.
+// TODO: RawGlobalAnnServers could be made configurable for self-hosted discovery servers.
 func NewConfig(myID protocol.DeviceID, folderPath string, peers []protocol.DeviceID) config.Configuration {
 	cfg := config.New(myID)
 
@@ -39,14 +40,12 @@ func NewConfig(myID protocol.DeviceID, folderPath string, peers []protocol.Devic
 
 	// Use port 0 (OS-assigned) so multiple instances don't collide.
 	// LAN discovery broadcasts the actual listen addresses to peers.
+	// The relay URL enables WAN connectivity through Syncthing's relay pool.
 	cfg.Options.RawListenAddresses = []string{
 		"tcp://0.0.0.0:0",
 		"quic://0.0.0.0:0",
+		"dynamic+https://relays.syncthing.net/endpoint",
 	}
-	cfg.Options.GlobalAnnEnabled = false
-	cfg.Options.LocalAnnEnabled = true
-	cfg.Options.RelaysEnabled = false
-	cfg.Options.NATEnabled = false
 	cfg.Options.URAccepted = -1
 
 	cfg.GUI.Enabled = true
