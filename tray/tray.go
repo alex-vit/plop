@@ -41,6 +41,9 @@ func onReady(version, homeDir, deviceID string) {
 	mSettings := systray.AddMenuItem("Open Settings", "Open peers.txt in text editor")
 	mSettings.Click(func() { openInEditor(filepath.Join(homeDir, "peers.txt")) })
 
+	mConfig := systray.AddMenuItem("Open Config Folder", "Open config directory in file manager")
+	mConfig.Click(func() { openPath(homeDir) })
+
 	systray.AddSeparator()
 
 	mQuit := systray.AddMenuItem("Exit", "Quit plop")

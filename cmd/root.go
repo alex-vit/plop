@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -25,6 +26,11 @@ var rootCmd = &cobra.Command{
 	Short: "Peer-to-peer file sync",
 	Long:  "A minimal P2P file sync tool powered by Syncthing.",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		logFile := setupLogFile(homeDir)
+		if logFile != nil {
+			defer logFile.Close()
+		}
+
 		eng, err := engine.New(homeDir, "", nil)
 		if err != nil {
 			return fmt.Errorf("creating engine: %w", err)
@@ -66,4 +72,23 @@ func Execute() {
 func init() {
 	defaultHome, _ := paths.ConfigDir()
 	rootCmd.PersistentFlags().StringVar(&homeDir, "home", defaultHome, "plop data directory")
+}
+
+// setupLogFile redirects log output and stdout/stderr to log.txt in the
+// config directory. Used in GUI mode where there's no terminal to see output.
+func setupLogFile(homeDir string) *os.File {
+	os.MkdirAll(homeDir, 0o700)
+	logPath := filepath.Join(homeDir, "log.txt")
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	if err != nil {
+		log.Printf("failed to open log file: %v", err)
+		return nil
+	}
+	// Dup fd 1/2 so libraries that captured os.Stderr at init time
+	// (like Syncthing's logger) also write to the log file.
+	redirectFd(f)
+	log.SetOutput(f)
+	os.Stdout = f
+	os.Stderr = f
+	return f
 }
