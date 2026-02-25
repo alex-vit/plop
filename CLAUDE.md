@@ -31,7 +31,8 @@ Requires **Go 1.25+**. Pinned to **Syncthing v1.30.0**.
   - `engine.go` — `Engine` struct: `New()` → `Start()` → `Stop()` lifecycle. `New()` auto-initializes (certs, config, sync folder) if not already set up.
   - `cert.go` — TLS cert generation/loading (`LoadOrGenerateCert`), device ID derivation.
   - `config.go` — Builds Syncthing XML config, `AddPeer()` for pairing.
-- **`tray/`** — System tray UI (Open Sync Folder, Open Settings, Exit). `tray.Run()` blocks; `systray.Quit()` unblocks it.
+- **`tray/`** — System tray UI (Open Plop Folder, Copy My ID, Add or Edit Peers, Open Config Folder, Exit). Double-click opens plop folder on Windows/Linux. `tray.Run()` blocks; `systray.Quit()` unblocks it.
+- **`notes/`** — Development notes. "Notes" means these local project notes, not private notes.
 
 **Data directory:** `~/Library/Application Support/plop` (overridable with `--home`), contains `cert.pem`, `key.pem`, `config.xml`, `db/`.
 
