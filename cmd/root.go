@@ -24,7 +24,7 @@ var rootCmd = &cobra.Command{
 	Short: "Peer-to-peer file sync",
 	Long:  "A minimal P2P file sync tool powered by Syncthing.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		eng, err := engine.New(homeDir)
+		eng, err := engine.New(homeDir, "", nil)
 		if err != nil {
 			return fmt.Errorf("creating engine: %w", err)
 		}

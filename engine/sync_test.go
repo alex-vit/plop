@@ -21,7 +21,7 @@ func TestSync(t *testing.T) {
 	syncA := t.TempDir()
 	syncB := t.TempDir()
 
-	// Generate certs and derive device IDs.
+	// Pre-generate certs so we know device IDs before creating engines.
 	certA, err := engine.GenerateCert(filepath.Join(homeA, "cert.pem"), filepath.Join(homeA, "key.pem"))
 	if err != nil {
 		t.Fatalf("GenerateCert A: %v", err)
@@ -36,25 +36,14 @@ func TestSync(t *testing.T) {
 	t.Logf("Device A: %s", idA)
 	t.Logf("Device B: %s", idB)
 
-	// Build configs with each peer known upfront.
-	cfgA := engine.NewConfig(idA, syncA, []protocol.DeviceID{idB})
-	cfgB := engine.NewConfig(idB, syncB, []protocol.DeviceID{idA})
-
-	if err := engine.SaveConfig(homeA, cfgA); err != nil {
-		t.Fatalf("SaveConfig A: %v", err)
-	}
-	if err := engine.SaveConfig(homeB, cfgB); err != nil {
-		t.Fatalf("SaveConfig B: %v", err)
-	}
-
-	// Start both engines.
-	engA, err := engine.New(homeA)
+	// Let New() auto-init configs with peers baked in.
+	engA, err := engine.New(homeA, syncA, []protocol.DeviceID{idB})
 	if err != nil {
 		t.Fatalf("engine.New A: %v", err)
 	}
 	t.Cleanup(engA.Stop)
 
-	engB, err := engine.New(homeB)
+	engB, err := engine.New(homeB, syncB, []protocol.DeviceID{idA})
 	if err != nil {
 		t.Fatalf("engine.New B: %v", err)
 	}

@@ -1,25 +1,60 @@
 package cmd
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/spf13/cobra"
+	"github.com/syncthing/syncthing/lib/protocol"
 
 	"github.com/alex-vit/plop/engine"
+	"github.com/alex-vit/plop/paths"
 )
 
+var peerStrs []string
+
 func init() {
+	runCmd.Flags().StringArrayVar(&peerStrs, "peer", nil, "device ID of a peer to sync with (repeatable)")
 	rootCmd.AddCommand(runCmd)
 }
 
 var runCmd = &cobra.Command{
-	Use:   "run",
+	Use:   "run [folder]",
 	Short: "Start the sync daemon",
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		eng, err := engine.New(homeDir)
+		home := homeDir
+		folderPath := ""
+
+		if len(args) == 1 {
+			abs, err := filepath.Abs(args[0])
+			if err != nil {
+				return fmt.Errorf("resolving folder path: %w", err)
+			}
+			folderPath = abs
+
+			configDir, err := paths.ConfigDir()
+			if err != nil {
+				return fmt.Errorf("config dir: %w", err)
+			}
+			hash := sha256.Sum256([]byte(abs))
+			home = filepath.Join(configDir, "instances", fmt.Sprintf("%x", hash[:4]))
+		}
+
+		var peers []protocol.DeviceID
+		for _, s := range peerStrs {
+			id, err := protocol.DeviceIDFromString(s)
+			if err != nil {
+				return fmt.Errorf("invalid peer device ID %q: %w", s, err)
+			}
+			peers = append(peers, id)
+		}
+
+		eng, err := engine.New(home, folderPath, peers)
 		if err != nil {
 			return fmt.Errorf("creating engine: %w", err)
 		}

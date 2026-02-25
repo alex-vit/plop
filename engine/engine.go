@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/db/backend"
 	"github.com/syncthing/syncthing/lib/events"
 	"github.com/syncthing/syncthing/lib/protocol"
@@ -26,7 +27,7 @@ type Engine struct {
 // New creates a new Engine. It loads the cert, config, opens the database,
 // and starts the early services (event logger and config wrapper) that
 // Syncthing's App.Start() depends on.
-func New(homeDir string) (*Engine, error) {
+func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine, error) {
 	if err := os.MkdirAll(homeDir, 0o700); err != nil {
 		return nil, err
 	}
@@ -39,19 +40,43 @@ func New(homeDir string) (*Engine, error) {
 		return nil, err
 	}
 
+	myID := DeviceID(cert)
+
 	// Create default config if none exists.
 	cfgPath := filepath.Join(homeDir, "config.xml")
+	configExisted := true
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
-		myID := DeviceID(cert)
-		userHome, err := os.UserHomeDir()
-		if err != nil {
-			return nil, err
+		configExisted = false
+		if folderPath == "" {
+			userHome, err := os.UserHomeDir()
+			if err != nil {
+				return nil, err
+			}
+			folderPath = filepath.Join(userHome, "plop")
 		}
-		folderPath := filepath.Join(userHome, "plop")
 		if err := os.MkdirAll(folderPath, 0o755); err != nil {
 			return nil, err
 		}
-		cfg := NewConfig(myID, folderPath, nil)
+		cfg := NewConfig(myID, folderPath, peers)
+		if err := SaveConfig(homeDir, cfg); err != nil {
+			return nil, err
+		}
+	}
+
+	// Add peers to existing config on subsequent runs.
+	if len(peers) > 0 && configExisted {
+		f, err := os.Open(cfgPath)
+		if err != nil {
+			return nil, err
+		}
+		cfg, _, err := config.ReadXML(f, myID)
+		f.Close()
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range peers {
+			AddPeer(&cfg, p)
+		}
 		if err := SaveConfig(homeDir, cfg); err != nil {
 			return nil, err
 		}
