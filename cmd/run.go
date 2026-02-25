@@ -64,6 +64,8 @@ var runCmd = &cobra.Command{
 		}
 
 		fmt.Printf("plop running as %s\n", eng.DeviceID())
+		fmt.Printf("Syncing: %s\n", eng.SyncFolder())
+		fmt.Printf("Config: %s\n", filepath.Join(home, "config.xml"))
 		fmt.Println("Press Ctrl-C to stop.")
 
 		// Handle shutdown signals.

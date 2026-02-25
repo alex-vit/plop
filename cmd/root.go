@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/energye/systray"
@@ -33,6 +34,10 @@ var rootCmd = &cobra.Command{
 		}
 		defer eng.Stop()
 
+		fmt.Printf("plop running as %s\n", eng.DeviceID())
+		fmt.Printf("Syncing: %s\n", eng.SyncFolder())
+		fmt.Printf("Config: %s\n", filepath.Join(homeDir, "config.xml"))
+
 		// Quit tray on signal so systray.Run unblocks.
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
@@ -47,7 +52,7 @@ var rootCmd = &cobra.Command{
 			systray.Quit()
 		}()
 
-		tray.Run(Version, homeDir)
+		tray.Run(Version, homeDir, eng.DeviceID().String())
 		return nil
 	},
 }

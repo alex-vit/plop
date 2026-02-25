@@ -140,3 +140,18 @@ func (e *Engine) Stop() {
 func (e *Engine) DeviceID() protocol.DeviceID {
 	return DeviceID(e.cert)
 }
+
+// SyncFolder returns the path of the first configured sync folder.
+func (e *Engine) SyncFolder() string {
+	cfgPath := filepath.Join(e.homeDir, "config.xml")
+	f, err := os.Open(cfgPath)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	cfg, _, err := config.ReadXML(f, e.DeviceID())
+	if err != nil || len(cfg.Folders) == 0 {
+		return ""
+	}
+	return cfg.Folders[0].Path
+}

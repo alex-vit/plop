@@ -6,17 +6,18 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/alex-vit/plop/icon"
 	"github.com/energye/systray"
 )
 
 // Run blocks on the calling goroutine, showing the system tray icon.
-func Run(version, homeDir string) {
-	systray.Run(func() { onReady(version, homeDir) }, onExit)
+func Run(version, homeDir, deviceID string) {
+	systray.Run(func() { onReady(version, homeDir, deviceID) }, onExit)
 }
 
-func onReady(version, homeDir string) {
+func onReady(version, homeDir, deviceID string) {
 	systray.SetTemplateIcon(icon.Data, icon.Data)
 	systray.SetTooltip("plop")
 	systray.SetOnClick(func(menu systray.IMenu) { menu.ShowMenu() })
@@ -26,6 +27,9 @@ func onReady(version, homeDir string) {
 	mTitle.Disable()
 
 	systray.AddSeparator()
+
+	mCopyID := systray.AddMenuItem("Copy Device ID", "Copy this device's ID to clipboard")
+	mCopyID.Click(func() { copyToClipboard(deviceID) })
 
 	mFolder := systray.AddMenuItem("Open Sync Folder", "Open synced folder in file manager")
 	mFolder.Click(func() { openSyncFolder(homeDir) })
@@ -84,4 +88,18 @@ func openInEditor(path string) {
 	default:
 		exec.Command("xdg-open", path).Start()
 	}
+}
+
+func copyToClipboard(text string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("pbcopy")
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "clip")
+	default:
+		cmd = exec.Command("xclip", "-selection", "clipboard")
+	}
+	cmd.Stdin = strings.NewReader(text)
+	cmd.Run()
 }
