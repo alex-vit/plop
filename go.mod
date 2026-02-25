@@ -3,6 +3,7 @@ module github.com/alex-vit/plop
 go 1.25.0
 
 require (
+	github.com/energye/systray v1.0.3
 	github.com/spf13/cobra v1.10.2
 	github.com/syncthing/syncthing v1.30.0
 	github.com/thejerf/suture/v4 v4.0.6
@@ -23,6 +24,7 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
+	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/pprof v0.0.0-20250423184734-337e5dd93bb4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
