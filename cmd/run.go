@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gosync/engine"
+	"github.com/alex-vit/plop/engine"
 )
 
 func init() {
@@ -28,7 +28,7 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("starting engine: %w", err)
 		}
 
-		fmt.Printf("gosync running as %s\n", eng.DeviceID())
+		fmt.Printf("plop running as %s\n", eng.DeviceID())
 		fmt.Println("Press Ctrl-C to stop.")
 
 		// Handle shutdown signals.

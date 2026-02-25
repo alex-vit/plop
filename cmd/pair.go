@@ -10,7 +10,7 @@ import (
 	"github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/protocol"
 
-	"gosync/engine"
+	"github.com/alex-vit/plop/engine"
 )
 
 func init() {

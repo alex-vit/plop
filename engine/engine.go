@@ -13,7 +13,7 @@ import (
 	suture "github.com/thejerf/suture/v4"
 )
 
-// Engine wraps syncthing.App with gosync's simplified lifecycle.
+// Engine wraps syncthing.App with plop's simplified lifecycle.
 type Engine struct {
 	app              *syncthing.App
 	earlyService     *suture.Supervisor

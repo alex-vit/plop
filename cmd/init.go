@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gosync/engine"
+	"github.com/alex-vit/plop/engine"
 )
 
 var folderPath string
@@ -20,7 +20,7 @@ func init() {
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize gosync (syncs ~/Sync by default)",
+	Short: "Initialize plop (syncs ~/Sync by default)",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		absFolder, err := filepath.Abs(folderPath)
@@ -54,7 +54,7 @@ var initCmd = &cobra.Command{
 			return fmt.Errorf("saving config: %w", err)
 		}
 
-		fmt.Println("Initialized gosync")
+		fmt.Println("Initialized plop")
 		fmt.Printf("  Folder: %s\n", absFolder)
 		fmt.Printf("  Data:   %s\n", homeDir)
 		fmt.Printf("  Device ID: %s\n", myID)

@@ -1,4 +1,4 @@
-module gosync
+module github.com/alex-vit/plop
 
 go 1.25.0
 

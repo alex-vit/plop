@@ -10,7 +10,7 @@ import (
 var homeDir string
 
 var rootCmd = &cobra.Command{
-	Use:   "gosync",
+	Use:   "plop",
 	Short: "Peer-to-peer file sync",
 	Long:  "A minimal P2P file sync tool powered by Syncthing.",
 }
@@ -23,6 +23,6 @@ func Execute() {
 
 func init() {
 	configDir, _ := os.UserConfigDir()
-	defaultHome := filepath.Join(configDir, "gosync")
-	rootCmd.PersistentFlags().StringVar(&homeDir, "home", defaultHome, "gosync data directory")
+	defaultHome := filepath.Join(configDir, "plop")
+	rootCmd.PersistentFlags().StringVar(&homeDir, "home", defaultHome, "plop data directory")
 }

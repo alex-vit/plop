@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-gosync is a P2P file sync CLI — a "dumbed down Syncthing" that embeds Syncthing's Go libraries (`lib/`) directly as a library, not as a subprocess wrapper. LAN + WAN discovery (global announce, relay, NAT traversal), single sync folder, Dropbox-style UX.
+plop is a P2P file sync CLI — a "dumbed down Syncthing" that embeds Syncthing's Go libraries (`lib/`) directly as a library, not as a subprocess wrapper. LAN + WAN discovery (global announce, relay, NAT traversal), single sync folder, Dropbox-style UX.
 
 ## Build & Test
 
 ```bash
 # Build (noassets tag is REQUIRED — Syncthing GUI assets aren't in the Go module)
-go build -tags noassets -o gosync .
+go build -tags noassets -o plop .
 
 # E2E integration test (builds, runs two instances, syncs a file)
 bash test_sync.sh
@@ -30,7 +30,7 @@ Requires **Go 1.25+**. Pinned to **Syncthing v1.30.0**.
   - `cert.go` — TLS cert generation/loading, device ID derivation.
   - `config.go` — Builds Syncthing XML config, `AddPeer()` for pairing.
 
-**Data directory:** `~/.gosync/` (overridable with `--home`), contains `cert.pem`, `key.pem`, `config.xml`, `db/`.
+**Data directory:** `~/Library/Application Support/plop` (overridable with `--home`), contains `cert.pem`, `key.pem`, `config.xml`, `db/`.
 
 ## Critical Gotchas
 

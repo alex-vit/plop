@@ -1,11 +1,11 @@
 # OS-standard paths and simplified init
 
-Config directory now uses `os.UserConfigDir()` instead of `~/.gosync`:
-- macOS: `~/Library/Application Support/gosync`
-- Linux: `~/.config/gosync`
-- Windows: `%AppData%/gosync`
+Config directory now uses `os.UserConfigDir()` instead of `~/.plop`:
+- macOS: `~/Library/Application Support/plop`
+- Linux: `~/.config/plop`
+- Windows: `%AppData%/plop`
 
-`gosync init` is now zero-arg with a `--folder` flag (default `~/Sync`):
-- `gosync init` — uses `~/Sync` and OS config dir
-- `gosync init --folder /path/to/folder` — custom sync folder
+`plop init` is now zero-arg with a `--folder` flag (default `~/Sync`):
+- `plop init` — uses `~/Sync` and OS config dir
+- `plop init --folder /path/to/folder` — custom sync folder
 - `--home` still overrides the config directory

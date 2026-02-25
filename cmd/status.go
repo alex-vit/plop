@@ -24,7 +24,7 @@ var statusCmd = &cobra.Command{
 		cfgPath := filepath.Join(homeDir, "config.xml")
 		data, err := os.ReadFile(cfgPath)
 		if err != nil {
-			return fmt.Errorf("reading config (have you run 'gosync init'?): %w", err)
+			return fmt.Errorf("reading config (have you run 'plop init'?): %w", err)
 		}
 
 		var cfg config.Configuration
@@ -36,7 +36,7 @@ var statusCmd = &cobra.Command{
 		apiKey := cfg.GUI.APIKey
 
 		if addr == "" || addr == "127.0.0.1:0" {
-			return fmt.Errorf("daemon not running or GUI address not configured (is 'gosync run' active?)")
+			return fmt.Errorf("daemon not running or GUI address not configured (is 'plop run' active?)")
 		}
 
 		baseURL := "http://" + addr
@@ -44,7 +44,7 @@ var statusCmd = &cobra.Command{
 		// System status.
 		sysStatus, err := apiGet(baseURL+"/rest/system/status", apiKey)
 		if err != nil {
-			return fmt.Errorf("querying status (is 'gosync run' active?): %w", err)
+			return fmt.Errorf("querying status (is 'plop run' active?): %w", err)
 		}
 
 		fmt.Printf("Device ID: %s\n", sysStatus["myID"])

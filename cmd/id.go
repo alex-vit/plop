@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gosync/engine"
+	"github.com/alex-vit/plop/engine"
 )
 
 func init() {

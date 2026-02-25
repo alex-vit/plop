@@ -11,7 +11,7 @@ import (
 	"github.com/syncthing/syncthing/lib/protocol"
 )
 
-// NewConfig creates a minimal Syncthing configuration for gosync:
+// NewConfig creates a minimal Syncthing configuration for plop:
 // single folder, LAN + WAN discovery, relay-capable.
 // TODO: RawGlobalAnnServers could be made configurable for self-hosted discovery servers.
 func NewConfig(myID protocol.DeviceID, folderPath string, peers []protocol.DeviceID) config.Configuration {

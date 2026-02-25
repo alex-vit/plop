@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"gosync/engine"
+	"github.com/alex-vit/plop/engine"
 
 	"github.com/syncthing/syncthing/lib/protocol"
 )
@@ -71,7 +71,7 @@ func TestSync(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Write test file on A.
-	testContent := []byte("hello from gosync")
+	testContent := []byte("hello from plop")
 	if err := os.WriteFile(filepath.Join(syncA, "test.txt"), testContent, 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
