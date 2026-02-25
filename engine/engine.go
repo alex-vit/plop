@@ -74,9 +74,16 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 	// Collect all desired peers from peers.txt.
 	allPeers, _ := ParsePeersFile(peersFile)
 
-	// Create default config if none exists.
+	// Load or create config.
 	cfgPath := filepath.Join(homeDir, "config.xml")
-	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+	var cfg config.Configuration
+	if f, err := os.Open(cfgPath); err == nil {
+		cfg, _, err = config.ReadXML(f, myID)
+		f.Close()
+		if err != nil {
+			return nil, err
+		}
+	} else {
 		if folderPath == "" {
 			userHome, err := os.UserHomeDir()
 			if err != nil {
@@ -84,29 +91,19 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 			}
 			folderPath = filepath.Join(userHome, "plop")
 		}
-		if err := os.MkdirAll(folderPath, 0o755); err != nil {
-			return nil, err
-		}
-		writeDefaultStignore(folderPath)
-		cfg := NewConfig(myID, folderPath, allPeers)
-		if err := SaveConfig(homeDir, cfg); err != nil {
-			return nil, err
-		}
-	} else {
-		// Sync peers.txt into existing config.
-		f, err := os.Open(cfgPath)
-		if err != nil {
-			return nil, err
-		}
-		cfg, _, err := config.ReadXML(f, myID)
-		f.Close()
-		if err != nil {
-			return nil, err
-		}
-		syncPeersConfig(&cfg, myID, allPeers)
-		if err := SaveConfig(homeDir, cfg); err != nil {
-			return nil, err
-		}
+		cfg = NewConfig(myID, folderPath, allPeers)
+	}
+
+	// Always reconcile peers.
+	syncPeersConfig(&cfg, myID, allPeers)
+	if err := SaveConfig(homeDir, cfg); err != nil {
+		return nil, err
+	}
+
+	// Ensure sync folders and .stignore exist.
+	for _, folder := range cfg.Folders {
+		os.MkdirAll(folder.Path, 0o755)
+		writeDefaultStignore(folder.Path)
 	}
 
 	evLogger := events.NewLogger()
