@@ -2,6 +2,7 @@ package engine
 
 import (
 	"crypto/tls"
+	"os"
 
 	"github.com/syncthing/syncthing/lib/protocol"
 	"github.com/syncthing/syncthing/lib/tlsutil"
@@ -12,9 +13,17 @@ func GenerateCert(certFile, keyFile string) (tls.Certificate, error) {
 	return tlsutil.NewCertificate(certFile, keyFile, "syncthing", 365*20)
 }
 
-// LoadCert loads an existing TLS certificate from disk.
-func LoadCert(certFile, keyFile string) (tls.Certificate, error) {
-	return tls.LoadX509KeyPair(certFile, keyFile)
+// LoadOrGenerateCert loads an existing TLS certificate or generates a new one
+// if the cert file doesn't exist.
+func LoadOrGenerateCert(certFile, keyFile string) (tls.Certificate, error) {
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err == nil {
+		return cert, nil
+	}
+	if !os.IsNotExist(err) {
+		return tls.Certificate{}, err
+	}
+	return GenerateCert(certFile, keyFile)
 }
 
 // DeviceID derives the Syncthing device ID from a TLS certificate.

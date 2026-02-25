@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"crypto/tls"
+	"os"
 	"path/filepath"
 
 	"github.com/syncthing/syncthing/lib/db/backend"
@@ -26,12 +27,34 @@ type Engine struct {
 // and starts the early services (event logger and config wrapper) that
 // Syncthing's App.Start() depends on.
 func New(homeDir string) (*Engine, error) {
+	if err := os.MkdirAll(homeDir, 0o700); err != nil {
+		return nil, err
+	}
+
 	certFile := filepath.Join(homeDir, "cert.pem")
 	keyFile := filepath.Join(homeDir, "key.pem")
 
-	cert, err := LoadCert(certFile, keyFile)
+	cert, err := LoadOrGenerateCert(certFile, keyFile)
 	if err != nil {
 		return nil, err
+	}
+
+	// Create default config if none exists.
+	cfgPath := filepath.Join(homeDir, "config.xml")
+	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+		myID := DeviceID(cert)
+		userHome, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		folderPath := filepath.Join(userHome, "plop")
+		if err := os.MkdirAll(folderPath, 0o755); err != nil {
+			return nil, err
+		}
+		cfg := NewConfig(myID, folderPath, nil)
+		if err := SaveConfig(homeDir, cfg); err != nil {
+			return nil, err
+		}
 	}
 
 	evLogger := events.NewLogger()
@@ -44,7 +67,6 @@ func New(homeDir string) (*Engine, error) {
 	earlyService.ServeBackground(ctx)
 	earlyService.Add(evLogger)
 
-	cfgPath := filepath.Join(homeDir, "config.xml")
 	cfgWrapper, err := syncthing.LoadConfigAtStartup(cfgPath, cert, evLogger, false, true, false)
 	if err != nil {
 		cancel()

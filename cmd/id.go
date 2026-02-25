@@ -20,7 +20,7 @@ var idCmd = &cobra.Command{
 		certFile := filepath.Join(homeDir, "cert.pem")
 		keyFile := filepath.Join(homeDir, "key.pem")
 
-		cert, err := engine.LoadCert(certFile, keyFile)
+		cert, err := engine.LoadOrGenerateCert(certFile, keyFile)
 		if err != nil {
 			return fmt.Errorf("loading certificate: %w", err)
 		}

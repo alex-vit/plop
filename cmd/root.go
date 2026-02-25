@@ -1,10 +1,15 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/energye/systray"
 	"github.com/spf13/cobra"
 
+	"github.com/alex-vit/plop/engine"
 	"github.com/alex-vit/plop/paths"
 	"github.com/alex-vit/plop/tray"
 )
@@ -18,8 +23,32 @@ var rootCmd = &cobra.Command{
 	Use:   "plop",
 	Short: "Peer-to-peer file sync",
 	Long:  "A minimal P2P file sync tool powered by Syncthing.",
-	Run: func(cmd *cobra.Command, args []string) {
-		tray.Run(Version)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		eng, err := engine.New(homeDir)
+		if err != nil {
+			return fmt.Errorf("creating engine: %w", err)
+		}
+		if err := eng.Start(); err != nil {
+			return fmt.Errorf("starting engine: %w", err)
+		}
+		defer eng.Stop()
+
+		// Quit tray on signal so systray.Run unblocks.
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+		go func() {
+			<-sig
+			systray.Quit()
+		}()
+
+		// Quit tray if engine exits on its own.
+		go func() {
+			eng.Wait()
+			systray.Quit()
+		}()
+
+		tray.Run(Version, homeDir)
+		return nil
 	},
 }
 
