@@ -3,9 +3,13 @@ package engine
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/syncthing/notify"
 	"github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/db/backend"
 	"github.com/syncthing/syncthing/lib/events"
@@ -18,8 +22,10 @@ import (
 // Engine wraps syncthing.App with plop's simplified lifecycle.
 type Engine struct {
 	app              *syncthing.App
+	cfgWrapper       config.Wrapper
 	earlyService     *suture.Supervisor
 	earlyServiceStop context.CancelFunc
+	peerWatchStop    context.CancelFunc
 	cert             tls.Certificate
 	homeDir          string
 }
@@ -42,11 +48,35 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 
 	myID := DeviceID(cert)
 
+	// Write --peer flags to peers.txt so they persist.
+	if len(peers) > 0 {
+		peersFile := filepath.Join(homeDir, "peers.txt")
+		existing, _ := ParsePeersFile(peersFile)
+		seen := make(map[protocol.DeviceID]bool, len(existing))
+		for _, p := range existing {
+			seen[p] = true
+		}
+		for _, p := range peers {
+			if !seen[p] {
+				if err := AppendPeersFile(peersFile, p); err != nil {
+					return nil, fmt.Errorf("writing peers.txt: %w", err)
+				}
+			}
+		}
+	}
+
+	// Ensure peers.txt exists so "Open Settings" always has a file to open.
+	peersFile := filepath.Join(homeDir, "peers.txt")
+	if _, err := os.Stat(peersFile); os.IsNotExist(err) {
+		os.WriteFile(peersFile, []byte("# Add one device ID per line\n"), 0o644)
+	}
+
+	// Collect all desired peers from peers.txt.
+	allPeers, _ := ParsePeersFile(peersFile)
+
 	// Create default config if none exists.
 	cfgPath := filepath.Join(homeDir, "config.xml")
-	configExisted := true
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
-		configExisted = false
 		if folderPath == "" {
 			userHome, err := os.UserHomeDir()
 			if err != nil {
@@ -57,14 +87,12 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 		if err := os.MkdirAll(folderPath, 0o755); err != nil {
 			return nil, err
 		}
-		cfg := NewConfig(myID, folderPath, peers)
+		cfg := NewConfig(myID, folderPath, allPeers)
 		if err := SaveConfig(homeDir, cfg); err != nil {
 			return nil, err
 		}
-	}
-
-	// Add peers to existing config on subsequent runs.
-	if len(peers) > 0 && configExisted {
+	} else {
+		// Sync peers.txt into existing config.
 		f, err := os.Open(cfgPath)
 		if err != nil {
 			return nil, err
@@ -74,9 +102,7 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 		if err != nil {
 			return nil, err
 		}
-		for _, p := range peers {
-			AddPeer(&cfg, p)
-		}
+		syncPeersConfig(&cfg, myID, allPeers)
 		if err := SaveConfig(homeDir, cfg); err != nil {
 			return nil, err
 		}
@@ -117,6 +143,7 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 
 	return &Engine{
 		app:              app,
+		cfgWrapper:       cfgWrapper,
 		earlyService:     earlyService,
 		earlyServiceStop: cancel,
 		cert:             cert,
@@ -125,7 +152,13 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 }
 
 func (e *Engine) Start() error {
-	return e.app.Start()
+	if err := e.app.Start(); err != nil {
+		return err
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	e.peerWatchStop = cancel
+	go e.watchPeers(ctx)
+	return nil
 }
 
 func (e *Engine) Wait() svcutil.ExitStatus {
@@ -133,6 +166,9 @@ func (e *Engine) Wait() svcutil.ExitStatus {
 }
 
 func (e *Engine) Stop() {
+	if e.peerWatchStop != nil {
+		e.peerWatchStop()
+	}
 	e.app.Stop(svcutil.ExitSuccess)
 	e.earlyServiceStop()
 }
@@ -141,17 +177,98 @@ func (e *Engine) DeviceID() protocol.DeviceID {
 	return DeviceID(e.cert)
 }
 
+// PeersFilePath returns the path to the peers.txt file.
+func (e *Engine) PeersFilePath() string {
+	return filepath.Join(e.homeDir, "peers.txt")
+}
+
 // SyncFolder returns the path of the first configured sync folder.
 func (e *Engine) SyncFolder() string {
-	cfgPath := filepath.Join(e.homeDir, "config.xml")
-	f, err := os.Open(cfgPath)
-	if err != nil {
-		return ""
-	}
-	defer f.Close()
-	cfg, _, err := config.ReadXML(f, e.DeviceID())
-	if err != nil || len(cfg.Folders) == 0 {
+	cfg := e.cfgWrapper.RawCopy()
+	if len(cfg.Folders) == 0 {
 		return ""
 	}
 	return cfg.Folders[0].Path
+}
+
+// syncPeers reads peers.txt and updates the running config to match.
+func (e *Engine) syncPeers() {
+	peersFile := e.PeersFilePath()
+	desired, err := ParsePeersFile(peersFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Printf("peers: reading %s: %v", peersFile, err)
+		}
+		return
+	}
+
+	myID := e.DeviceID()
+	if _, err := e.cfgWrapper.Modify(func(cfg *config.Configuration) {
+		syncPeersConfig(cfg, myID, desired)
+	}); err != nil {
+		log.Printf("peers: updating config: %v", err)
+	}
+}
+
+// syncPeersConfig reconciles cfg to have exactly the desired set of peers.
+func syncPeersConfig(cfg *config.Configuration, myID protocol.DeviceID, desired []protocol.DeviceID) {
+	want := make(map[protocol.DeviceID]bool, len(desired))
+	for _, p := range desired {
+		want[p] = true
+	}
+
+	// Remove peers not in desired set (skip self).
+	var toRemove []protocol.DeviceID
+	for _, d := range cfg.Devices {
+		if d.DeviceID == myID {
+			continue
+		}
+		if !want[d.DeviceID] {
+			toRemove = append(toRemove, d.DeviceID)
+		}
+	}
+	for _, id := range toRemove {
+		RemovePeer(cfg, id)
+	}
+
+	// Add missing peers.
+	for _, p := range desired {
+		AddPeer(cfg, p)
+	}
+}
+
+// watchPeers watches peers.txt for changes and re-syncs the config.
+func (e *Engine) watchPeers(ctx context.Context) {
+	peersFile := e.PeersFilePath()
+
+	c := make(chan notify.EventInfo, 1)
+	// Watch the parent directory — watching a single file that may not exist
+	// yet or gets recreated (editor save) is unreliable on some platforms.
+	dir := filepath.Dir(peersFile)
+	if err := notify.Watch(dir, c, notify.Create|notify.Write|notify.Rename); err != nil {
+		log.Printf("peers: watching %s: %v", dir, err)
+		return
+	}
+	defer notify.Stop(c)
+
+	base := filepath.Base(peersFile)
+	// Debounce: coalesce rapid edits into a single sync.
+	var timer *time.Timer
+	for {
+		select {
+		case <-ctx.Done():
+			if timer != nil {
+				timer.Stop()
+			}
+			return
+		case ei := <-c:
+			if filepath.Base(ei.Path()) != base {
+				continue
+			}
+			if timer != nil {
+				timer.Stop()
+			}
+			timer = time.AfterFunc(500*time.Millisecond, e.syncPeers)
+		}
+	}
 }

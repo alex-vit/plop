@@ -1,13 +1,10 @@
 package cmd
 
 import (
-	"encoding/xml"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/protocol"
 
 	"github.com/alex-vit/plop/engine"
@@ -27,22 +24,19 @@ var pairCmd = &cobra.Command{
 			return fmt.Errorf("invalid device ID: %w", err)
 		}
 
-		// Load existing config.
-		cfgPath := filepath.Join(homeDir, "config.xml")
-		data, err := os.ReadFile(cfgPath)
-		if err != nil {
-			return fmt.Errorf("reading config: %w", err)
+		peersFile := filepath.Join(homeDir, "peers.txt")
+
+		// Check if already present.
+		existing, _ := engine.ParsePeersFile(peersFile)
+		for _, p := range existing {
+			if p == peerID {
+				fmt.Printf("Already paired with %s\n", peerID)
+				return nil
+			}
 		}
 
-		var cfg config.Configuration
-		if err := xml.Unmarshal(data, &cfg); err != nil {
-			return fmt.Errorf("parsing config: %w", err)
-		}
-
-		engine.AddPeer(&cfg, peerID)
-
-		if err := engine.SaveConfig(homeDir, cfg); err != nil {
-			return fmt.Errorf("saving config: %w", err)
+		if err := engine.AppendPeersFile(peersFile, peerID); err != nil {
+			return fmt.Errorf("writing peers.txt: %w", err)
 		}
 
 		fmt.Printf("Paired with %s\n", peerID)

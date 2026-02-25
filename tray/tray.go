@@ -34,8 +34,8 @@ func onReady(version, homeDir, deviceID string) {
 	mFolder := systray.AddMenuItem("Open Sync Folder", "Open synced folder in file manager")
 	mFolder.Click(func() { openSyncFolder(homeDir) })
 
-	mSettings := systray.AddMenuItem("Open Settings", "Open config in text editor")
-	mSettings.Click(func() { openInEditor(filepath.Join(homeDir, "config.xml")) })
+	mSettings := systray.AddMenuItem("Open Settings", "Open peers.txt in text editor")
+	mSettings.Click(func() { openInEditor(filepath.Join(homeDir, "peers.txt")) })
 
 	systray.AddSeparator()
 

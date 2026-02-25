@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/energye/systray v1.0.3
 	github.com/spf13/cobra v1.10.2
+	github.com/syncthing/notify v0.0.0-20250528144937-c7027d4f7465
 	github.com/syncthing/syncthing v1.30.0
 	github.com/thejerf/suture/v4 v4.0.6
 )
@@ -52,7 +53,6 @@ require (
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
-	github.com/syncthing/notify v0.0.0-20250528144937-c7027d4f7465 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.9.0 // indirect

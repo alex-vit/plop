@@ -100,6 +100,28 @@ addToFolder:
 	})
 }
 
+// RemovePeer removes a device from the config's device list and folder sharing.
+func RemovePeer(cfg *config.Configuration, peerID protocol.DeviceID) {
+	// Remove from device list.
+	for i, d := range cfg.Devices {
+		if d.DeviceID == peerID {
+			cfg.Devices = append(cfg.Devices[:i], cfg.Devices[i+1:]...)
+			break
+		}
+	}
+
+	// Remove from folder device lists.
+	for fi := range cfg.Folders {
+		devs := cfg.Folders[fi].Devices
+		for i, fd := range devs {
+			if fd.DeviceID == peerID {
+				cfg.Folders[fi].Devices = append(devs[:i], devs[i+1:]...)
+				break
+			}
+		}
+	}
+}
+
 func generateAPIKey() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
