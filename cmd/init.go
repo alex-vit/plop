@@ -14,13 +14,13 @@ var folderPath string
 
 func init() {
 	home, _ := os.UserHomeDir()
-	initCmd.Flags().StringVar(&folderPath, "folder", filepath.Join(home, "Sync"), "sync folder path")
+	initCmd.Flags().StringVar(&folderPath, "folder", filepath.Join(home, "plop"), "sync folder path")
 	rootCmd.AddCommand(initCmd)
 }
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize plop (syncs ~/Sync by default)",
+	Short: "Initialize plop (syncs ~/plop by default)",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		absFolder, err := filepath.Abs(folderPath)

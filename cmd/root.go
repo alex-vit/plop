@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
+	"github.com/alex-vit/plop/paths"
 	"github.com/alex-vit/plop/tray"
 )
 
@@ -30,7 +30,6 @@ func Execute() {
 }
 
 func init() {
-	configDir, _ := os.UserConfigDir()
-	defaultHome := filepath.Join(configDir, "plop")
+	defaultHome, _ := paths.ConfigDir()
 	rootCmd.PersistentFlags().StringVar(&homeDir, "home", defaultHome, "plop data directory")
 }
