@@ -6,3 +6,6 @@ import _ "embed"
 
 //go:embed icon.png
 var Data []byte
+
+//go:embed icon.ico
+var DataICO []byte

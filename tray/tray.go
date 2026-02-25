@@ -18,7 +18,11 @@ func Run(version, homeDir, deviceID string) {
 }
 
 func onReady(version, homeDir, deviceID string) {
-	systray.SetTemplateIcon(icon.Data, icon.Data)
+	if runtime.GOOS == "darwin" {
+		systray.SetTemplateIcon(icon.Data, icon.Data)
+	} else {
+		systray.SetIcon(icon.DataICO) // TODO: icon not showing on Windows — needs investigation
+	}
 	systray.SetTooltip("plop")
 	systray.SetOnClick(func(menu systray.IMenu) { menu.ShowMenu() })
 	systray.SetOnRClick(func(menu systray.IMenu) { menu.ShowMenu() })

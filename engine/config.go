@@ -122,6 +122,16 @@ func RemovePeer(cfg *config.Configuration, peerID protocol.DeviceID) {
 	}
 }
 
+// writeDefaultStignore creates a .stignore file with sensible defaults
+// if one doesn't already exist.
+func writeDefaultStignore(folderPath string) {
+	p := filepath.Join(folderPath, ".stignore")
+	if _, err := os.Stat(p); err == nil {
+		return
+	}
+	os.WriteFile(p, []byte("// Syncthing internals\n.stfolder\n\n// OS junk\n.DS_Store\nThumbs.db\ndesktop.ini\n"), 0o644)
+}
+
 func generateAPIKey() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)

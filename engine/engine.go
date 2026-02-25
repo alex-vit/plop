@@ -87,6 +87,7 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 		if err := os.MkdirAll(folderPath, 0o755); err != nil {
 			return nil, err
 		}
+		writeDefaultStignore(folderPath)
 		cfg := NewConfig(myID, folderPath, allPeers)
 		if err := SaveConfig(homeDir, cfg); err != nil {
 			return nil, err
