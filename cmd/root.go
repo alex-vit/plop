@@ -22,7 +22,7 @@ func Execute() {
 }
 
 func init() {
-	home, _ := os.UserHomeDir()
-	defaultHome := filepath.Join(home, ".gosync")
+	configDir, _ := os.UserConfigDir()
+	defaultHome := filepath.Join(configDir, "gosync")
 	rootCmd.PersistentFlags().StringVar(&homeDir, "home", defaultHome, "gosync data directory")
 }

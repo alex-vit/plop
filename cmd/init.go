@@ -10,22 +10,26 @@ import (
 	"gosync/engine"
 )
 
+var folderPath string
+
 func init() {
+	home, _ := os.UserHomeDir()
+	initCmd.Flags().StringVar(&folderPath, "folder", filepath.Join(home, "Sync"), "sync folder path")
 	rootCmd.AddCommand(initCmd)
 }
 
 var initCmd = &cobra.Command{
-	Use:   "init <folder-path>",
-	Short: "Initialize gosync with a sync folder",
-	Args:  cobra.ExactArgs(1),
+	Use:   "init",
+	Short: "Initialize gosync (syncs ~/Sync by default)",
+	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		folderPath, err := filepath.Abs(args[0])
+		absFolder, err := filepath.Abs(folderPath)
 		if err != nil {
 			return err
 		}
 
 		// Create sync folder if it doesn't exist.
-		if err := os.MkdirAll(folderPath, 0o755); err != nil {
+		if err := os.MkdirAll(absFolder, 0o755); err != nil {
 			return fmt.Errorf("creating sync folder: %w", err)
 		}
 
@@ -45,13 +49,13 @@ var initCmd = &cobra.Command{
 		myID := engine.DeviceID(cert)
 
 		// Generate and save config.
-		cfg := engine.NewConfig(myID, folderPath, nil)
+		cfg := engine.NewConfig(myID, absFolder, nil)
 		if err := engine.SaveConfig(homeDir, cfg); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
 
 		fmt.Println("Initialized gosync")
-		fmt.Printf("  Folder: %s\n", folderPath)
+		fmt.Printf("  Folder: %s\n", absFolder)
 		fmt.Printf("  Data:   %s\n", homeDir)
 		fmt.Printf("  Device ID: %s\n", myID)
 
