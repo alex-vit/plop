@@ -26,20 +26,25 @@ func onReady(version, homeDir, deviceID string) {
 	systray.SetTooltip("plop")
 	systray.SetOnClick(func(menu systray.IMenu) { menu.ShowMenu() })
 	systray.SetOnRClick(func(menu systray.IMenu) { menu.ShowMenu() })
+	if runtime.GOOS == "windows" || runtime.GOOS == "linux" {
+		systray.SetOnDClick(func(menu systray.IMenu) { openSyncFolder(homeDir) })
+	}
 
 	mTitle := systray.AddMenuItem("plop "+displayVersion(version), "")
 	mTitle.Disable()
 
 	systray.AddSeparator()
 
-	mCopyID := systray.AddMenuItem("Copy Device ID", "Copy this device's ID to clipboard")
-	mCopyID.Click(func() { copyToClipboard(deviceID) })
-
-	mFolder := systray.AddMenuItem("Open Sync Folder", "Open synced folder in file manager")
+	mFolder := systray.AddMenuItem("Open Plop Folder", "Open synced folder in file manager")
 	mFolder.Click(func() { openSyncFolder(homeDir) })
 
-	mSettings := systray.AddMenuItem("Open Settings", "Open peers.txt in text editor")
-	mSettings.Click(func() { openInEditor(filepath.Join(homeDir, "peers.txt")) })
+	systray.AddSeparator()
+
+	mCopyID := systray.AddMenuItem("Copy My ID", "Copy this device's ID to clipboard")
+	mCopyID.Click(func() { copyToClipboard(deviceID) })
+
+	mPeers := systray.AddMenuItem("Add or Edit Peers", "Open peers.txt in text editor")
+	mPeers.Click(func() { openInEditor(filepath.Join(homeDir, "peers.txt")) })
 
 	mConfig := systray.AddMenuItem("Open Config Folder", "Open config directory in file manager")
 	mConfig.Click(func() { openPath(homeDir) })
@@ -86,17 +91,6 @@ func openPath(path string) {
 	}
 }
 
-func openInEditor(path string) {
-	switch runtime.GOOS {
-	case "darwin":
-		exec.Command("open", "-t", path).Start()
-	case "windows":
-		exec.Command("notepad", path).Start()
-	default:
-		exec.Command("xdg-open", path).Start()
-	}
-}
-
 func copyToClipboard(text string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
@@ -110,3 +104,15 @@ func copyToClipboard(text string) {
 	cmd.Stdin = strings.NewReader(text)
 	cmd.Run()
 }
+
+func openInEditor(path string) {
+	switch runtime.GOOS {
+	case "darwin":
+		exec.Command("open", "-t", path).Start()
+	case "windows":
+		exec.Command("notepad", path).Start()
+	default:
+		exec.Command("xdg-open", path).Start()
+	}
+}
+
