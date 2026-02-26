@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  windows-release:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build Windows executable and installer
+        shell: pwsh
+        run: ./scripts/build-windows-release.ps1 -Version "${{ github.event.release.tag_name }}"
+
+      - name: Copy versioned artifacts
+        shell: pwsh
+        run: |
+          Copy-Item out/windows/plop.exe "out/windows/plop-${{ github.event.release.tag_name }}-windows-amd64.exe"
+          Copy-Item out/windows/plop-setup.exe "out/windows/plop-${{ github.event.release.tag_name }}-windows-amd64-setup.exe"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            out/windows/plop-${{ github.event.release.tag_name }}-windows-amd64.exe
+            out/windows/plop-${{ github.event.release.tag_name }}-windows-amd64-setup.exe
+          generate_release_notes: true

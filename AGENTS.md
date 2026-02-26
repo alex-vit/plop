@@ -11,6 +11,7 @@
 
 ## Build, Test, and Development Commands
 - `./scripts/build-mac-app.sh` builds a double-clickable macOS bundle at `out/Plop.app`.
+- `pwsh ./scripts/build-windows-release.ps1 -Version vX.Y.Z` builds Windows `out/windows/plop.exe` and `out/windows/plop-setup.exe` (Inno Setup required).
 - `go build -tags noassets -o plop .` builds a plain CLI binary.
 - `go run -tags noassets . run` runs headless engine mode for local development.
 - `go test -tags noassets -v -count=1 -timeout 3m ./engine/` runs the end-to-end engine sync test.
