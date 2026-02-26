@@ -5,7 +5,7 @@ updated: 2026-02-26
 tags: [tray, ux]
 status: implemented
 sections:
-  - Blob + anime expression icons — green/yellow/red with ^_^, o_o, >_< eyes
+  - Blob + anime expression icons — green/yellow/red/gray with ^_^, o_o, >_<, -_- eyes
   - 16x16 pixel art source, nearest-neighbor scaled to 22px and 32px
 ---
 
@@ -15,10 +15,11 @@ Show sync status through the tray icon, tooltip, and a disabled menu item.
 
 ## Implementation
 
-Blob character with anime expression eyes, three states:
+Blob character with anime expression eyes, four states:
 - **Green ^_^** `#22C55E` / `#15803D` outline — idle, synced (`StatusLightSynced`)
 - **Yellow o_o** `#F59E0B` / `#B45309` outline — syncing or starting (`StatusLightSyncing`)
-- **Red >_<** `#EF4444` / `#DC2626` outline — problem: error, disconnected (`StatusLightAttention`)
+- **Red >_<** `#EF4444` / `#DC2626` outline — problem: error, unavailable (`StatusLightAttention`)
+- **Gray -_-** `#9CA3AF` / `#6B7280` outline — synced but peers offline (`StatusLightOffline`)
 
 Three surfaces, all implemented:
 1. **Tray icon** — blob with expression on both platforms (Windows ICO 16+32px, macOS PNG 22px)
@@ -49,5 +50,5 @@ Three surfaces, all implemented:
 
 - **Status source:** Syncthing event subscription + polling fallback (`status_service.go`)
 - **Icon format:** `SetIcon` with colored icons on both platforms — ICO (16+32px) on Windows, PNG (22px) on macOS. Not `SetTemplateIcon` (that strips color).
-- **Granularity:** Three broad states. Starting maps to yellow (syncing). Waiting-for-peers maps to red (attention).
+- **Granularity:** Four icon states. Starting maps to yellow (syncing). Waiting-for-peers maps to gray (offline) — neutral rather than alarming, since local data is fine.
 - **Menu item details:** Tooltip includes peer counts; menu item shows state only.

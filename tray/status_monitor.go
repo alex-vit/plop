@@ -78,13 +78,13 @@ func trayStatusFromSnapshot(snapshot engine.StatusSnapshot) trayStatus {
 			return trayStatus{
 				title:     "Status: Waiting for peers",
 				tooltip:   fmt.Sprintf("plop - Waiting for peers (%d/%d connected)", snapshot.ConnectedPeers, snapshot.TotalPeers),
-				iconState: icon.StatusLightAttention,
+				iconState: icon.StatusLightOffline,
 			}
 		}
 		return trayStatus{
 			title:     "Status: Waiting for peers",
 			tooltip:   "plop - Waiting for peers",
-			iconState: icon.StatusLightAttention,
+			iconState: icon.StatusLightOffline,
 		}
 	case engine.StatusStateSynced:
 		if snapshot.TotalPeers > 0 {

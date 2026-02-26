@@ -58,7 +58,7 @@ func TestTrayStatusFromSnapshot(t *testing.T) {
 			want: trayStatus{
 				title:     "Status: Waiting for peers",
 				tooltip:   "plop - Waiting for peers (0/3 connected)",
-				iconState: icon.StatusLightAttention,
+				iconState: icon.StatusLightOffline,
 			},
 		},
 		{

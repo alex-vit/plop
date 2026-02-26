@@ -14,6 +14,7 @@ const (
 	StatusLightSynced StatusLight = iota
 	StatusLightSyncing
 	StatusLightAttention
+	StatusLightOffline
 )
 
 type blobStyle struct {
@@ -91,6 +92,28 @@ var statusStyles = map[StatusLight]blobStyle{
 			".....OOOOOO.....",
 		},
 	},
+	StatusLightOffline: {
+		body:    color.NRGBA{0x9C, 0xA3, 0xAF, 0xFF}, // gray
+		outline: color.NRGBA{0x6B, 0x72, 0x80, 0xFF},
+		grid: [16]string{
+			".....OOOOOO.....",
+			"...OOBBBBBBOO...",
+			"..OBBBBBBBBBBO..",
+			".OBBBBBBBBBBBBO.",
+			".OBBBBBBBBBBBBO.",
+			"OBBBBBBBBBBBBBBO",
+			"OBBBBBBBBBBBBBBO",
+			"OBEEEEEBBEEEEEBO", // -_- flat lines
+			"OBBBBBBBBBBBBBBO",
+			"OBBBBBBBBBBBBBBO",
+			"OBBBBBBBBBBBBBBO",
+			".OBBBBBBBBBBBBO.",
+			".OBBBBBBBBBBBBO.",
+			"..OBBBBBBBBBBO..",
+			"...OOBBBBBBOO...",
+			".....OOOOOO.....",
+		},
+	},
 }
 
 type statusIconData struct {
@@ -102,6 +125,7 @@ var generatedStatusIcons = map[StatusLight]statusIconData{
 	StatusLightSynced:    buildStatusIcon(StatusLightSynced),
 	StatusLightSyncing:   buildStatusIcon(StatusLightSyncing),
 	StatusLightAttention: buildStatusIcon(StatusLightAttention),
+	StatusLightOffline:   buildStatusIcon(StatusLightOffline),
 }
 
 func BytesForStatusLight(state StatusLight) (pngData, icoData []byte) {
