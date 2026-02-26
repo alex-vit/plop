@@ -3,8 +3,11 @@ package engine
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
+	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/events"
@@ -55,6 +58,53 @@ func NewConfig(myID protocol.DeviceID, folderPath string, peers []protocol.Devic
 	cfg.GUI.APIKey = generateAPIKey()
 
 	return cfg
+}
+
+// ensureRuntimeGUIAddress assigns a concrete localhost port when GUI uses
+// host:0, so external status checks can reliably find the REST API address.
+func ensureRuntimeGUIAddress(cfg *config.Configuration) error {
+	if !cfg.GUI.Enabled {
+		return nil
+	}
+
+	addr := strings.TrimSpace(cfg.GUI.RawAddress)
+	if addr == "" {
+		addr = "127.0.0.1:0"
+	}
+
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		// Non-TCP forms (for example UNIX sockets) are left unchanged.
+		return nil
+	}
+	if port != "0" {
+		return nil
+	}
+
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "127.0.0.1"
+	}
+
+	resolved, err := pickFreeAddress(host)
+	if err != nil {
+		return err
+	}
+	cfg.GUI.RawAddress = resolved
+	return nil
+}
+
+func pickFreeAddress(host string) (string, error) {
+	ln, err := net.Listen("tcp", net.JoinHostPort(host, "0"))
+	if err != nil {
+		return "", fmt.Errorf("allocating GUI listener on %s: %w", host, err)
+	}
+	defer ln.Close()
+
+	_, port, err := net.SplitHostPort(ln.Addr().String())
+	if err != nil {
+		return "", fmt.Errorf("parsing allocated GUI listener address: %w", err)
+	}
+	return net.JoinHostPort(host, port), nil
 }
 
 // LoadConfig loads an existing config from disk.

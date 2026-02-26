@@ -96,6 +96,9 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 
 	// Always reconcile peers.
 	syncPeersConfig(&cfg, myID, allPeers)
+	if err := ensureRuntimeGUIAddress(&cfg); err != nil {
+		return nil, fmt.Errorf("resolving GUI address: %w", err)
+	}
 	if err := SaveConfig(homeDir, cfg); err != nil {
 		return nil, err
 	}

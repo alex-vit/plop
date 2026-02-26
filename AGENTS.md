@@ -41,7 +41,7 @@
 - Requires Go `1.25+` and currently targets Syncthing `v1.30.0`.
 - Default config/data path is OS-specific; use `--home` to override during testing.
 - Do not commit local runtime artifacts (binaries, zips, logs, or generated config/state files).
-- Create temporary artifacts (for example screenshots, debug captures, and ad-hoc exports) in the OS temp directory by default (`$TMPDIR` on macOS, otherwise `/tmp`), not in the repository tree.
+- Create temporary artifacts (for example screenshots, debug captures, and ad-hoc exports) in `/tmp` by default on macOS (for readability), and otherwise use the OS temp directory; do not place them in the repository tree.
 
 ## Architecture Snapshot
 - `plop` is a P2P file sync CLI that embeds Syncthing `lib/` as a library (not a subprocess wrapper).
@@ -74,3 +74,4 @@
 - Claude `Bash(...)` permission patterns map to Codex `prefix_rule(...)` entries in `~/.codex/rules/default.rules`.
 - Use `python3 ~/.codex/skills/rule-forge/scripts/rule_forge.py inspect` to review over-specific rules and `from-session --write` to promote/prune.
 - Treat persistent memory as files in repo (`notes/`) plus Codex config/session artifacts; do not assume hidden long-term memory.
+- In this repo, references to "CLI Hub" or "clihub" mean the project at `https://github.com/thellimist/clihub`.

@@ -3,7 +3,6 @@ package tray
 import (
 	"encoding/json"
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -92,7 +91,7 @@ func computeTrayStatus(client *http.Client, homeDir string) trayStatus {
 		return trayStatus{title: "Status: Config error", tooltip: "plop - Config error", iconState: icon.StatusLightAttention}
 	}
 
-	addr := resolveGUIAddress(homeDir, cfg.GUI.Address)
+	addr := normalizeGUIAddress(cfg.GUI.Address)
 	if addr == "" || cfg.GUI.APIKey == "" {
 		return trayStatus{title: "Status: Starting...", tooltip: "plop - Starting...", iconState: icon.StatusLightSyncing}
 	}
@@ -173,39 +172,12 @@ func readRuntimeConfig(homeDir string) (runtimeConfig, error) {
 	return cfg, nil
 }
 
-func resolveGUIAddress(homeDir, cfgAddress string) string {
+func normalizeGUIAddress(cfgAddress string) string {
 	addr := strings.TrimSpace(cfgAddress)
-	if addr != "" && !strings.HasSuffix(addr, ":0") {
-		return addr
-	}
-
-	fromLog, err := readRuntimeGUIAddress(filepath.Join(homeDir, "log.txt"))
-	if err != nil {
+	if addr == "" || strings.HasSuffix(addr, ":0") {
 		return ""
 	}
-	return fromLog
-}
-
-func readRuntimeGUIAddress(logPath string) (string, error) {
-	data, err := os.ReadFile(logPath)
-	if err != nil {
-		return "", err
-	}
-
-	const marker = "GUI and API listening on "
-	lines := strings.Split(string(data), "\n")
-	for i := len(lines) - 1; i >= 0; i-- {
-		line := lines[i]
-		idx := strings.Index(line, marker)
-		if idx < 0 {
-			continue
-		}
-		addr := strings.TrimSpace(line[idx+len(marker):])
-		if addr != "" {
-			return addr, nil
-		}
-	}
-	return "", errors.New("runtime GUI address not found in log")
+	return addr
 }
 
 func apiGet(client *http.Client, endpoint, apiKey string, out any) error {
