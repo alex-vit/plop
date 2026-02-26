@@ -2,31 +2,34 @@
 title: Start on Login
 created: 2026-02-26
 updated: 2026-02-26
-tags: [tray, ux, startup]
-status: idea
+tags: [tray, ux, startup, installer]
+status: implemented
 sections:
   - Tray menu checkbox to toggle launch at login, per-platform mechanisms
+  - Windows installer autostart option and clean uninstall
 ---
 
-# Start on Login (Idea)
+# Start on Login (Implemented)
 
-Add a toggleable "Start on Login" / "Start with Windows" menu item in the tray, like MonitorBright does.
+Toggleable "Start on Login" / "Start with Windows" menu item in the tray, plus installer integration on Windows.
 
-## Concept
+## Implementation
 
-A checkable menu item in the tray menu. When enabled, plop launches automatically on login/boot.
+- **macOS** — Launch Agent plist in `~/Library/LaunchAgents/com.alexvit.plop.plist`. Tray menu label: "Start on Login".
+- **Windows** — Registry key `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, value name `Plop`. Tray menu label: "Start with Windows".
+- **Linux** — Not supported (stub returns unsupported, menu item hidden).
+- Setting is detected from OS state (plist/registry exists), not stored in plop config.
+- Exe path resolved at runtime via `os.Executable()`.
 
-## Per-platform mechanisms
+## Windows Installer Integration
 
-- **macOS** — Launch Agent plist in `~/Library/LaunchAgents/`
-- **Windows** — Registry key in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, or shortcut in Startup folder
-- **Linux** — `.desktop` file in `~/.config/autostart/`
+The Inno Setup installer (`installer.iss`) mirrors the app's autostart:
 
-## Open Questions
+- **"Start with Windows" checkbox** — `[Tasks]` section offers the option during install.
+- **Same registry key** — `[Registry]` section writes the same `HKCU\...\Run\Plop` value the tray menu uses. `uninsdeletevalue` flag cleans it up on uninstall.
+- **Clean uninstall** — `[UninstallDelete]` removes the entire `%LocalAppData%\Plop` directory (certs, config, db, logs are all regenerable; the sync folder at `~/plop` is separate and untouched).
 
-- Where to persist the setting? Detect from OS state (plist/registry exists) or store in plop config?
-- Label: "Start on Login" (macOS), "Start with Windows" (Windows), or just "Start at Login" everywhere?
-- Need to know the exe path at runtime to register — `os.Executable()` should work
+The installer and the app's tray toggle stay in sync since they read/write the same registry entry.
 
 ## Future Polish: macOS Login Items Icon
 
