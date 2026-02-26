@@ -3,12 +3,14 @@ package tray
 import (
 	"encoding/xml"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 
+	"github.com/alex-vit/plop/autostart"
 	"github.com/alex-vit/plop/icon"
 	"github.com/energye/systray"
 )
@@ -53,6 +55,16 @@ func onReady(version, homeDir, deviceID string) {
 	mConfig := systray.AddMenuItem("Open Config Folder", "Open config directory in file manager")
 	mConfig.Click(func() { openPath(homeDir) })
 
+	if label := autostart.MenuLabel(); label != "" {
+		systray.AddSeparator()
+
+		mAutostart := systray.AddMenuItem(label, "Launch plop automatically when you sign in")
+		if autostart.IsEnabled(homeDir) {
+			mAutostart.Check()
+		}
+		mAutostart.Click(func() { toggleAutostart(mAutostart, homeDir) })
+	}
+
 	systray.AddSeparator()
 
 	mQuit := systray.AddMenuItem("Exit", "Quit plop")
@@ -60,6 +72,23 @@ func onReady(version, homeDir, deviceID string) {
 }
 
 func onExit() {}
+
+func toggleAutostart(item *systray.MenuItem, homeDir string) {
+	if item.Checked() {
+		if err := autostart.Disable(homeDir); err != nil {
+			log.Printf("autostart: disable failed: %v", err)
+			return
+		}
+		item.Uncheck()
+		return
+	}
+
+	if err := autostart.Enable(homeDir); err != nil {
+		log.Printf("autostart: enable failed: %v", err)
+		return
+	}
+	item.Check()
+}
 
 func displayVersion(version string) string {
 	if version == "" {
