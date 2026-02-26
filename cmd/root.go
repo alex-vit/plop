@@ -58,7 +58,7 @@ var rootCmd = &cobra.Command{
 			systray.Quit()
 		}()
 
-		tray.Run(Version, homeDir, eng.DeviceID().String())
+		tray.Run(Version, homeDir, eng.DeviceID().String(), eng.StatusUpdates())
 		return nil
 	},
 }

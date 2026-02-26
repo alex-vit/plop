@@ -25,6 +25,7 @@ type Engine struct {
 	cfgWrapper       config.Wrapper
 	evLogger         events.Logger
 	earlyService     *suture.Supervisor
+	earlyServiceDone <-chan error
 	earlyServiceStop context.CancelFunc
 	peerWatchStop    context.CancelFunc
 	statusSvc        *statusService
@@ -118,7 +119,7 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 	// cfg.Modify() which blocks until the wrapper's Serve() loop is active.
 	earlyService := suture.New("early", suture.Spec{})
 	ctx, cancel := context.WithCancel(context.Background())
-	earlyService.ServeBackground(ctx)
+	earlyServiceDone := earlyService.ServeBackground(ctx)
 	earlyService.Add(evLogger)
 
 	cfgWrapper, err := syncthing.LoadConfigAtStartup(cfgPath, cert, evLogger, false, true, false)
@@ -149,6 +150,7 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 		cfgWrapper:       cfgWrapper,
 		evLogger:         evLogger,
 		earlyService:     earlyService,
+		earlyServiceDone: earlyServiceDone,
 		earlyServiceStop: cancel,
 		cert:             cert,
 		homeDir:          homeDir,
@@ -181,6 +183,9 @@ func (e *Engine) Stop() {
 	}
 	e.app.Stop(svcutil.ExitSuccess)
 	e.earlyServiceStop()
+	if e.earlyServiceDone != nil {
+		<-e.earlyServiceDone
+	}
 }
 
 func (e *Engine) DeviceID() protocol.DeviceID {

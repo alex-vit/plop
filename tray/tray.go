@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/alex-vit/plop/autostart"
+	"github.com/alex-vit/plop/engine"
 	"github.com/alex-vit/plop/icon"
 	"github.com/energye/systray"
 )
@@ -18,11 +19,11 @@ import (
 var stopStatusMonitor func()
 
 // Run blocks on the calling goroutine, showing the system tray icon.
-func Run(version, homeDir, deviceID string) {
-	systray.Run(func() { onReady(version, homeDir, deviceID) }, onExit)
+func Run(version, homeDir, deviceID string, statusUpdates <-chan engine.StatusSnapshot) {
+	systray.Run(func() { onReady(version, homeDir, deviceID, statusUpdates) }, onExit)
 }
 
-func onReady(version, homeDir, deviceID string) {
+func onReady(version, homeDir, deviceID string, statusUpdates <-chan engine.StatusSnapshot) {
 	setTrayIcon(icon.StatusLightSyncing)
 	systray.SetTooltip("plop")
 	systray.SetOnClick(func(menu systray.IMenu) { menu.ShowMenu() })
@@ -36,7 +37,7 @@ func onReady(version, homeDir, deviceID string) {
 
 	mStatus := systray.AddMenuItem("Status: Starting...", "Current sync status")
 	mStatus.Disable()
-	stopStatusMonitor = startStatusMonitor(homeDir, mStatus)
+	stopStatusMonitor = startStatusMonitor(statusUpdates, mStatus)
 
 	systray.AddSeparator()
 

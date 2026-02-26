@@ -1,42 +1,14 @@
 package tray
 
 import (
-	"encoding/json"
-	"encoding/xml"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
+	"github.com/alex-vit/plop/engine"
 	"github.com/alex-vit/plop/icon"
 	"github.com/energye/systray"
 )
-
-type runtimeConfig struct {
-	GUI struct {
-		Address string `xml:"address"`
-		APIKey  string `xml:"apikey"`
-	} `xml:"gui"`
-	Folders []struct {
-		ID string `xml:"id,attr"`
-	} `xml:"folder"`
-}
-
-type dbStatusResponse struct {
-	State          string `json:"state"`
-	NeedTotalItems int    `json:"needTotalItems"`
-}
-
-type systemConnectionsResponse struct {
-	Connections map[string]struct {
-		Connected bool `json:"connected"`
-	} `json:"connections"`
-}
 
 type trayStatus struct {
 	title     string
@@ -44,18 +16,13 @@ type trayStatus struct {
 	iconState icon.StatusLight
 }
 
-func startStatusMonitor(homeDir string, item *systray.MenuItem) func() {
+func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.MenuItem) func() {
 	stop := make(chan struct{})
 	var once sync.Once
 
 	go func() {
-		client := &http.Client{Timeout: 2 * time.Second}
-		ticker := time.NewTicker(4 * time.Second)
-		defer ticker.Stop()
-
-		current := trayStatus{iconState: icon.StatusLightSyncing}
-		for {
-			next := computeTrayStatus(client, homeDir)
+		current := trayStatus{}
+		apply := func(next trayStatus) {
 			if next.title != current.title {
 				item.SetTitle(next.title)
 			}
@@ -66,11 +33,21 @@ func startStatusMonitor(homeDir string, item *systray.MenuItem) func() {
 				setTrayIcon(next.iconState)
 			}
 			current = next
+		}
 
+		apply(trayStatusFromSnapshot(engine.StatusSnapshot{State: engine.StatusStateStarting}))
+
+		for {
 			select {
 			case <-stop:
 				return
-			case <-ticker.C:
+			case snapshot, ok := <-updates:
+				if !ok {
+					updates = nil
+					apply(trayStatusFromSnapshot(engine.StatusSnapshot{State: engine.StatusStateUnavailable}))
+					continue
+				}
+				apply(trayStatusFromSnapshot(snapshot))
 			}
 		}
 	}()
@@ -82,124 +59,80 @@ func startStatusMonitor(homeDir string, item *systray.MenuItem) func() {
 	}
 }
 
-func computeTrayStatus(client *http.Client, homeDir string) trayStatus {
-	cfg, err := readRuntimeConfig(homeDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return trayStatus{title: "Status: Starting...", tooltip: "plop - Starting...", iconState: icon.StatusLightSyncing}
+func trayStatusFromSnapshot(snapshot engine.StatusSnapshot) trayStatus {
+	switch snapshot.State {
+	case engine.StatusStateError:
+		return trayStatus{
+			title:     "Status: Error",
+			tooltip:   "plop - Sync error",
+			iconState: icon.StatusLightAttention,
 		}
-		return trayStatus{title: "Status: Config error", tooltip: "plop - Config error", iconState: icon.StatusLightAttention}
-	}
-
-	addr := normalizeGUIAddress(cfg.GUI.Address)
-	if addr == "" || cfg.GUI.APIKey == "" {
-		return trayStatus{title: "Status: Starting...", tooltip: "plop - Starting...", iconState: icon.StatusLightSyncing}
-	}
-
-	baseURL := addr
-	if !strings.Contains(baseURL, "://") {
-		baseURL = "http://" + baseURL
-	}
-
-	folderID := "default"
-	if len(cfg.Folders) > 0 && cfg.Folders[0].ID != "" {
-		folderID = cfg.Folders[0].ID
-	}
-
-	var dbStatus dbStatusResponse
-	dbURL := baseURL + "/rest/db/status?folder=" + url.QueryEscape(folderID)
-	if err := apiGet(client, dbURL, cfg.GUI.APIKey, &dbStatus); err != nil {
-		return trayStatus{title: "Status: Unavailable", tooltip: "plop - Status unavailable", iconState: icon.StatusLightAttention}
-	}
-
-	connected, totalPeers := fetchConnectionCounts(client, baseURL, cfg.GUI.APIKey)
-	state := strings.ToLower(strings.TrimSpace(dbStatus.State))
-
-	switch {
-	case strings.Contains(state, "error") || state == "unknown":
-		return trayStatus{title: "Status: Error", tooltip: "plop - Sync error", iconState: icon.StatusLightAttention}
-	case state == "idle":
-		if dbStatus.NeedTotalItems > 0 {
-			return trayStatus{title: "Status: Syncing...", tooltip: "plop - Syncing...", iconState: icon.StatusLightSyncing}
+	case engine.StatusStateUnavailable:
+		return trayStatus{
+			title:     "Status: Unavailable",
+			tooltip:   "plop - Status unavailable",
+			iconState: icon.StatusLightAttention,
 		}
-		if totalPeers > 0 && connected == 0 {
+	case engine.StatusStateWaitingPeers:
+		if snapshot.TotalPeers > 0 {
 			return trayStatus{
 				title:     "Status: Waiting for peers",
-				tooltip:   fmt.Sprintf("plop - Waiting for peers (0/%d connected)", totalPeers),
+				tooltip:   fmt.Sprintf("plop - Waiting for peers (%d/%d connected)", snapshot.ConnectedPeers, snapshot.TotalPeers),
 				iconState: icon.StatusLightAttention,
 			}
 		}
-		if totalPeers > 0 {
+		return trayStatus{
+			title:     "Status: Waiting for peers",
+			tooltip:   "plop - Waiting for peers",
+			iconState: icon.StatusLightAttention,
+		}
+	case engine.StatusStateSynced:
+		if snapshot.TotalPeers > 0 {
 			return trayStatus{
 				title:     "Status: Synced",
-				tooltip:   fmt.Sprintf("plop - Synced (%d/%d peers connected)", connected, totalPeers),
+				tooltip:   fmt.Sprintf("plop - Synced (%d/%d peers connected)", snapshot.ConnectedPeers, snapshot.TotalPeers),
 				iconState: icon.StatusLightSynced,
 			}
 		}
-		return trayStatus{title: "Status: Synced", tooltip: "plop - Synced", iconState: icon.StatusLightSynced}
-	case state == "":
-		return trayStatus{title: "Status: Starting...", tooltip: "plop - Starting...", iconState: icon.StatusLightSyncing}
+		return trayStatus{
+			title:     "Status: Synced",
+			tooltip:   "plop - Synced",
+			iconState: icon.StatusLightSynced,
+		}
+	case engine.StatusStateSyncing:
+		return trayStatus{
+			title:     "Status: Syncing...",
+			tooltip:   "plop - Syncing...",
+			iconState: icon.StatusLightSyncing,
+		}
+	case engine.StatusStateStarting:
+		return trayStatus{
+			title:     "Status: Starting...",
+			tooltip:   "plop - Starting...",
+			iconState: icon.StatusLightSyncing,
+		}
 	default:
-		return trayStatus{title: "Status: Syncing...", tooltip: "plop - Syncing...", iconState: icon.StatusLightSyncing}
-	}
-}
-
-func fetchConnectionCounts(client *http.Client, baseURL, apiKey string) (connected int, total int) {
-	var conns systemConnectionsResponse
-	if err := apiGet(client, baseURL+"/rest/system/connections", apiKey, &conns); err != nil {
-		return 0, 0
-	}
-
-	for _, peer := range conns.Connections {
-		total++
-		if peer.Connected {
-			connected++
+		// Defensive fallback for unknown states.
+		folderState := strings.ToLower(strings.TrimSpace(snapshot.FolderState))
+		switch {
+		case folderState == "":
+			return trayStatus{
+				title:     "Status: Starting...",
+				tooltip:   "plop - Starting...",
+				iconState: icon.StatusLightSyncing,
+			}
+		case strings.Contains(folderState, "error") || folderState == "unknown":
+			return trayStatus{
+				title:     "Status: Error",
+				tooltip:   "plop - Sync error",
+				iconState: icon.StatusLightAttention,
+			}
+		default:
+			return trayStatus{
+				title:     "Status: Syncing...",
+				tooltip:   "plop - Syncing...",
+				iconState: icon.StatusLightSyncing,
+			}
 		}
 	}
-	return connected, total
-}
-
-func readRuntimeConfig(homeDir string) (runtimeConfig, error) {
-	var cfg runtimeConfig
-
-	data, err := os.ReadFile(filepath.Join(homeDir, "config.xml"))
-	if err != nil {
-		return cfg, err
-	}
-	if err := xml.Unmarshal(data, &cfg); err != nil {
-		return cfg, err
-	}
-	return cfg, nil
-}
-
-func normalizeGUIAddress(cfgAddress string) string {
-	addr := strings.TrimSpace(cfgAddress)
-	if addr == "" || strings.HasSuffix(addr, ":0") {
-		return ""
-	}
-	return addr
-}
-
-func apiGet(client *http.Client, endpoint, apiKey string, out any) error {
-	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("X-API-Key", apiKey)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("unexpected status code: %s", resp.Status)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(body, out)
 }
