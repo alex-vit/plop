@@ -11,6 +11,8 @@ import (
 	"github.com/syncthing/syncthing/lib/protocol"
 )
 
+const DefaultFolderID = "default"
+
 // NewConfig creates a minimal Syncthing configuration for plop:
 // single folder, LAN + WAN discovery, relay-capable.
 // TODO: RawGlobalAnnServers could be made configurable for self-hosted discovery servers.
@@ -18,7 +20,7 @@ func NewConfig(myID protocol.DeviceID, folderPath string, peers []protocol.Devic
 	cfg := config.New(myID)
 
 	folder := config.FolderConfiguration{
-		ID:               "default",
+		ID:               DefaultFolderID,
 		Label:            "Sync",
 		Path:             folderPath,
 		Type:             config.FolderTypeSendReceive,
