@@ -18,7 +18,7 @@ try {
     }
   }
 
-  $outDir = Join-Path $RepoRoot "out/windows"
+  $outDir = Join-Path $RepoRoot "out"
   New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
   $goBin = (go env GOBIN).Trim()

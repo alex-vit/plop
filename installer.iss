@@ -12,7 +12,7 @@ AppPublisherURL=https://github.com/alex-vit/plop
 DefaultDirName={localappdata}\Plop
 DefaultGroupName=Plop
 PrivilegesRequired=lowest
-OutputDir=out\windows
+OutputDir=out
 OutputBaseFilename=plop-setup
 SetupIconFile=icon\icon.ico
 UninstallDisplayIcon={app}\plop.exe
@@ -23,7 +23,7 @@ CloseApplications=yes
 WizardStyle=modern
 
 [Files]
-Source: "out\windows\plop.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "out\plop.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Plop"; Filename: "{app}\plop.exe"

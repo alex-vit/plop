@@ -53,15 +53,15 @@ jobs:
         shell: pwsh
         run: |
           $tag = "${{ needs.prepare.outputs.tag }}"
-          Copy-Item out/windows/plop.exe "out/windows/plop-$tag-windows-amd64.exe"
-          Copy-Item out/windows/plop-setup.exe "out/windows/plop-$tag-windows-amd64-setup.exe"
+          Copy-Item out/plop.exe "out/plop-$tag-windows-amd64.exe"
+          Copy-Item out/plop-setup.exe "out/plop-$tag-windows-amd64-setup.exe"
 
       - uses: actions/upload-artifact@v4
         with:
           name: windows-release-assets
           path: |
-            out/windows/plop-${{ needs.prepare.outputs.tag }}-windows-amd64.exe
-            out/windows/plop-${{ needs.prepare.outputs.tag }}-windows-amd64-setup.exe
+            out/plop-${{ needs.prepare.outputs.tag }}-windows-amd64.exe
+            out/plop-${{ needs.prepare.outputs.tag }}-windows-amd64-setup.exe
 
   macos-build:
     needs: prepare
@@ -79,15 +79,12 @@ jobs:
       - name: Package macOS app bundle
         run: |
           tag="${{ needs.prepare.outputs.tag }}"
-          mkdir -p out/macos
-          ditto -c -k --sequesterRsrc --keepParent out/Plop.app "out/macos/plop-${tag}-macos-arm64-app.zip"
+          ditto -c -k --sequesterRsrc --keepParent out/Plop.app "out/plop-${tag}-macos-arm64-app.zip"
 
       - uses: actions/upload-artifact@v4
         with:
           name: macos-release-assets
-          path: |
-            out/Plop.app
-            out/macos/plop-${{ needs.prepare.outputs.tag }}-macos-arm64-app.zip
+          path: out/plop-${{ needs.prepare.outputs.tag }}-macos-arm64-app.zip
 
   release:
     needs:
