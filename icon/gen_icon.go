@@ -11,8 +11,33 @@ import (
 	"os"
 )
 
+// 16x16 source grid for the default app icon (green ^_^ synced blob).
+var grid16 = [16]string{
+	".....OOOOOO.....",
+	"...OOBBBBBBOO...",
+	"..OBBBBBBBBBBO..",
+	".OBBBBBBBBBBBBO.",
+	".OBBBBBBBBBBBBO.",
+	"OBBBBBBBBBBBBBBO",
+	"OBBBEBBBBBBEBBBO", // ^_^ peaks
+	"OBBEBEBBBBEBEBBO", // ^_^ mids
+	"OBEBBBEBBEBBBEBO", // ^_^ feet
+	"OBBBBBBBBBBBBBBO",
+	"OBBBBBBBBBBBBBBO",
+	".OBBBBBBBBBBBBO.",
+	".OBBBBBBBBBBBBO.",
+	"..OBBBBBBBBBBO..",
+	"...OOBBBBBBOO...",
+	".....OOOOOO.....",
+}
+
+var (
+	bodyColor    = color.NRGBA{0x22, 0xC5, 0x5E, 0xFF} // green
+	outlineColor = color.NRGBA{0x15, 0x80, 0x3D, 0xFF}
+	eyeColor     = color.NRGBA{0x1E, 0x1E, 0x1E, 0xFF}
+)
+
 func main() {
-	// Generate ICO with 16 and 32 px sizes.
 	sizes := []int{16, 32}
 	var pngs [][]byte
 	for _, size := range sizes {
@@ -28,7 +53,6 @@ func main() {
 	defer ico.Close()
 	ico.Write(buildICO(sizes, pngs))
 
-	// Also write a 22px PNG for macOS template icon.
 	f, err := os.Create("icon.png")
 	if err != nil {
 		panic(err)
@@ -39,51 +63,25 @@ func main() {
 
 func drawIcon(size int) *image.NRGBA {
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
-	black := color.NRGBA{0, 0, 0, 255}
 
-	set := func(x, y int) {
-		if x >= 0 && x < size && y >= 0 && y < size {
-			img.Set(x, y, black)
+	for y := range size {
+		srcY := y * 16 / size
+		row := grid16[srcY]
+		for x := range size {
+			srcX := x * 16 / size
+			switch row[srcX] {
+			case 'O':
+				img.SetNRGBA(x, y, outlineColor)
+			case 'B':
+				img.SetNRGBA(x, y, bodyColor)
+			case 'E':
+				img.SetNRGBA(x, y, eyeColor)
+			}
 		}
 	}
-
-	// Scale factor relative to the original 22px design.
-	s := float64(size) / 22.0
-
-	si := func(v int) int { return int(float64(v)*s + 0.5) }
-
-	// Up arrow (left side, centered at x=7)
-	for y := si(7); y <= si(17); y++ {
-		set(si(6), y)
-		set(si(7), y)
-	}
-	set(si(6), si(6))
-	set(si(7), si(6))
-	set(si(5), si(7))
-	set(si(8), si(7))
-	set(si(4), si(8))
-	set(si(9), si(8))
-	set(si(3), si(9))
-	set(si(10), si(9))
-
-	// Down arrow (right side, centered at x=14)
-	for y := si(4); y <= si(14); y++ {
-		set(si(13), y)
-		set(si(14), y)
-	}
-	set(si(13), si(15))
-	set(si(14), si(15))
-	set(si(12), si(14))
-	set(si(15), si(14))
-	set(si(11), si(13))
-	set(si(16), si(13))
-	set(si(10), si(12))
-	set(si(17), si(12))
-
 	return img
 }
 
-// buildICO assembles an ICO file from PNG-encoded images.
 func buildICO(sizes []int, pngs [][]byte) []byte {
 	n := len(sizes)
 	dataOffset := 6 + n*16

@@ -5,8 +5,8 @@ updated: 2026-02-26
 tags: [tray, ux]
 status: implemented
 sections:
-  - Traffic light concept — green/yellow/red icon + status menu item
-  - Colorful circle icons on both Windows (ICO 16+32px) and macOS (PNG 22px)
+  - Blob + anime expression icons — green/yellow/red with ^_^, o_o, >_< eyes
+  - 16x16 pixel art source, nearest-neighbor scaled to 22px and 32px
 ---
 
 # Status Indicator (Implemented)
@@ -15,22 +15,28 @@ Show sync status through the tray icon, tooltip, and a disabled menu item.
 
 ## Implementation
 
-Traffic light approach with three states:
-- **Green** `#22C55E` — idle, everything synced (`StatusLightSynced`)
-- **Yellow** `#EAB308` — syncing in progress or starting (`StatusLightSyncing`)
-- **Red** `#EF4444` — problem: disconnected, conflict, error (`StatusLightAttention`)
+Blob character with anime expression eyes, three states:
+- **Green ^_^** `#22C55E` / `#15803D` outline — idle, synced (`StatusLightSynced`)
+- **Yellow o_o** `#F59E0B` / `#B45309` outline — syncing or starting (`StatusLightSyncing`)
+- **Red >_<** `#EF4444` / `#DC2626` outline — problem: error, disconnected (`StatusLightAttention`)
 
 Three surfaces, all implemented:
-1. **Tray icon** — colored filled circle on both platforms (Windows ICO 16+32px, macOS PNG 22px)
+1. **Tray icon** — blob with expression on both platforms (Windows ICO 16+32px, macOS PNG 22px)
 2. **Tooltip** — hover text, e.g. "plop - Synced (1/2 peers connected)", "plop - Syncing..."
 3. **Menu item** — disabled "Status: ..." text below the version line
 
 ### Icon rendering (`icon/status_icon.go`)
 
 - Runtime-generated at startup, no embedded status icon files
-- **Windows:** Colored filled circles in ICO format (16+32px). Hard pixel edges, no anti-aliasing (clean at tray scale). Inspired by monibright's `icon/gen.go` approach.
-- **macOS:** Colored filled circles as PNG (22px per menu bar convention). Uses `SetIcon` (not `SetTemplateIcon`) so colors render as-is, like Zoom.app.
-- Previous approach (monochrome traffic light with 3 lamps in a rectangle) was too detailed for 16/32px and looked muddy.
+- **Source of truth:** 16x16 pixel art grids (`.`=transparent, `O`=outline, `B`=body, `E`=eye), defined as string arrays in Go. Design explored in `notes/plop-icon-pixel-art.html`.
+- **Scaling:** Nearest-neighbor from 16x16 to target sizes (22px macOS, 32px Windows). No anti-aliasing — hard pixel edges at all sizes.
+- **Windows:** ICO format (16+32px). **macOS:** PNG (22px). Uses `SetIcon` (not `SetTemplateIcon`) so colors render as-is.
+- **Static app icon** (`gen_icon.go`): green ^_^ blob, same bitmap approach. Generated via `go generate ./icon`.
+
+#### Design evolution
+1. Monochrome traffic light (3 lamps in rectangle) — too detailed, muddy at 16px
+2. Colored filled circles — clean but generic, no personality
+3. **Blob + anime eyes** (current) — readable at 16px, expressive, memorable brand identity
 
 ### Status pipeline (`engine/status_service.go` → `tray/status_monitor.go`)
 

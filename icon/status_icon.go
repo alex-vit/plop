@@ -16,11 +16,81 @@ const (
 	StatusLightAttention
 )
 
-// Traffic-light colors for tray icon (Windows ICO + macOS PNG).
-var statusColors = map[StatusLight]color.NRGBA{
-	StatusLightSynced:    {R: 0x22, G: 0xC5, B: 0x5E, A: 0xFF}, // green
-	StatusLightSyncing:   {R: 0xEA, G: 0xB3, B: 0x08, A: 0xFF}, // yellow/amber
-	StatusLightAttention: {R: 0xEF, G: 0x44, B: 0x44, A: 0xFF}, // red
+type blobStyle struct {
+	body    color.NRGBA
+	outline color.NRGBA
+	grid    [16]string // 16x16 bitmap: '.'=transparent, 'O'=outline, 'B'=body, 'E'=eye
+}
+
+var dark = color.NRGBA{0x1E, 0x1E, 0x1E, 0xFF}
+
+var statusStyles = map[StatusLight]blobStyle{
+	StatusLightSynced: {
+		body:    color.NRGBA{0x22, 0xC5, 0x5E, 0xFF}, // green
+		outline: color.NRGBA{0x15, 0x80, 0x3D, 0xFF},
+		grid: [16]string{
+			".....OOOOOO.....",
+			"...OOBBBBBBOO...",
+			"..OBBBBBBBBBBO..",
+			".OBBBBBBBBBBBBO.",
+			".OBBBBBBBBBBBBO.",
+			"OBBBBBBBBBBBBBBO",
+			"OBBBEBBBBBBEBBBO", // ^_^ peaks
+			"OBBEBEBBBBEBEBBO", // ^_^ mids
+			"OBEBBBEBBEBBBEBO", // ^_^ feet
+			"OBBBBBBBBBBBBBBO",
+			"OBBBBBBBBBBBBBBO",
+			".OBBBBBBBBBBBBO.",
+			".OBBBBBBBBBBBBO.",
+			"..OBBBBBBBBBBO..",
+			"...OOBBBBBBOO...",
+			".....OOOOOO.....",
+		},
+	},
+	StatusLightSyncing: {
+		body:    color.NRGBA{0xF5, 0x9E, 0x0B, 0xFF}, // amber
+		outline: color.NRGBA{0xB4, 0x53, 0x09, 0xFF},
+		grid: [16]string{
+			".....OOOOOO.....",
+			"...OOBBBBBBOO...",
+			"..OBBBBBBBBBBO..",
+			".OBBBBBBBBBBBBO.",
+			".OBBBBBBBBBBBBO.",
+			"OBBEEEBBBBEEEBBO", // o_o top arc
+			"OBEBBBEBBEBBBEBO", // o_o sides
+			"OBEBBBEBBEBBBEBO",
+			"OBEBBBEBBEBBBEBO",
+			"OBBEEEBBBBEEEBBO", // o_o bottom arc
+			"OBBBBBBBBBBBBBBO",
+			".OBBBBBBBBBBBBO.",
+			".OBBBBBBBBBBBBO.",
+			"..OBBBBBBBBBBO..",
+			"...OOBBBBBBOO...",
+			".....OOOOOO.....",
+		},
+	},
+	StatusLightAttention: {
+		body:    color.NRGBA{0xEF, 0x44, 0x44, 0xFF}, // red
+		outline: color.NRGBA{0xDC, 0x26, 0x26, 0xFF},
+		grid: [16]string{
+			".....OOOOOO.....",
+			"...OOBBBBBBOO...",
+			"..OBBBBBBBBBBO..",
+			".OBBBBBBBBBBBBO.",
+			".OBBBBBBBBBBBBO.",
+			"OBEBBBEBBEBBBEBO", // >_< corners
+			"OBBEBEBBBBEBEBBO", // >_< inner
+			"OBBBEBBBBBBEBBBO", // >_< center
+			"OBBEBEBBBBEBEBBO", // >_< inner
+			"OBEBBBEBBEBBBEBO", // >_< corners
+			"OBBBBBBBBBBBBBBO",
+			".OBBBBBBBBBBBBO.",
+			".OBBBBBBBBBBBBO.",
+			"..OBBBBBBBBBBO..",
+			"...OOBBBBBBOO...",
+			".....OOOOOO.....",
+		},
+	},
 }
 
 type statusIconData struct {
@@ -42,38 +112,37 @@ func BytesForStatusLight(state StatusLight) (pngData, icoData []byte) {
 }
 
 func buildStatusIcon(state StatusLight) statusIconData {
-	c := statusColors[state]
+	style := statusStyles[state]
 
-	// ICO: colorful filled circle for Windows (16+32 px).
 	icoSizes := []int{16, 32}
 	icoPngs := make([][]byte, 0, len(icoSizes))
 	for _, size := range icoSizes {
-		icoPngs = append(icoPngs, encodePNG(drawColorCircle(size, c)))
+		icoPngs = append(icoPngs, encodePNG(renderBlob(style, size)))
 	}
 
-	// PNG: colorful filled circle for macOS menu bar (22px per convention).
 	return statusIconData{
-		png: encodePNG(drawColorCircle(22, c)),
+		png: encodePNG(renderBlob(style, 22)),
 		ico: buildICO(icoSizes, icoPngs),
 	}
 }
 
-// drawColorCircle draws a filled circle in the given color, centered in a
-// size×size image. Hard pixel edges, no anti-aliasing.
-func drawColorCircle(size int, c color.NRGBA) *image.NRGBA {
+// renderBlob draws the blob icon at the given size by nearest-neighbor
+// scaling from the 16x16 source grid.
+func renderBlob(style blobStyle, size int) *image.NRGBA {
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
 
-	center := float64(size) / 2
-	radius := center - 1 // 1px margin
-
 	for y := range size {
+		srcY := y * 16 / size
+		row := style.grid[srcY]
 		for x := range size {
-			px := float64(x) + 0.5
-			py := float64(y) + 0.5
-			dx := px - center
-			dy := py - center
-			if dx*dx+dy*dy <= radius*radius {
-				img.SetNRGBA(x, y, c)
+			srcX := x * 16 / size
+			switch row[srcX] {
+			case 'O':
+				img.SetNRGBA(x, y, style.outline)
+			case 'B':
+				img.SetNRGBA(x, y, style.body)
+			case 'E':
+				img.SetNRGBA(x, y, dark)
 			}
 		}
 	}
