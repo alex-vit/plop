@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alex-vit/plop/icon"
 	"github.com/energye/systray"
 )
 
@@ -39,8 +40,9 @@ type systemConnectionsResponse struct {
 }
 
 type trayStatus struct {
-	title   string
-	tooltip string
+	title     string
+	tooltip   string
+	iconState icon.StatusLight
 }
 
 func startStatusMonitor(homeDir string, item *systray.MenuItem) func() {
@@ -52,14 +54,19 @@ func startStatusMonitor(homeDir string, item *systray.MenuItem) func() {
 		ticker := time.NewTicker(4 * time.Second)
 		defer ticker.Stop()
 
-		current := trayStatus{}
+		current := trayStatus{iconState: icon.StatusLightSyncing}
 		for {
 			next := computeTrayStatus(client, homeDir)
-			if next != current {
+			if next.title != current.title {
 				item.SetTitle(next.title)
-				systray.SetTooltip(next.tooltip)
-				current = next
 			}
+			if next.tooltip != current.tooltip {
+				systray.SetTooltip(next.tooltip)
+			}
+			if next.iconState != current.iconState {
+				setTrayIcon(next.iconState)
+			}
+			current = next
 
 			select {
 			case <-stop:
@@ -80,14 +87,14 @@ func computeTrayStatus(client *http.Client, homeDir string) trayStatus {
 	cfg, err := readRuntimeConfig(homeDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return trayStatus{title: "Status: Starting...", tooltip: "plop - Starting..."}
+			return trayStatus{title: "Status: Starting...", tooltip: "plop - Starting...", iconState: icon.StatusLightSyncing}
 		}
-		return trayStatus{title: "Status: Config error", tooltip: "plop - Config error"}
+		return trayStatus{title: "Status: Config error", tooltip: "plop - Config error", iconState: icon.StatusLightAttention}
 	}
 
 	addr := resolveGUIAddress(homeDir, cfg.GUI.Address)
 	if addr == "" || cfg.GUI.APIKey == "" {
-		return trayStatus{title: "Status: Starting...", tooltip: "plop - Starting..."}
+		return trayStatus{title: "Status: Starting...", tooltip: "plop - Starting...", iconState: icon.StatusLightSyncing}
 	}
 
 	baseURL := addr
@@ -103,7 +110,7 @@ func computeTrayStatus(client *http.Client, homeDir string) trayStatus {
 	var dbStatus dbStatusResponse
 	dbURL := baseURL + "/rest/db/status?folder=" + url.QueryEscape(folderID)
 	if err := apiGet(client, dbURL, cfg.GUI.APIKey, &dbStatus); err != nil {
-		return trayStatus{title: "Status: Unavailable", tooltip: "plop - Status unavailable"}
+		return trayStatus{title: "Status: Unavailable", tooltip: "plop - Status unavailable", iconState: icon.StatusLightAttention}
 	}
 
 	connected, totalPeers := fetchConnectionCounts(client, baseURL, cfg.GUI.APIKey)
@@ -111,22 +118,30 @@ func computeTrayStatus(client *http.Client, homeDir string) trayStatus {
 
 	switch {
 	case strings.Contains(state, "error") || state == "unknown":
-		return trayStatus{title: "Status: Error", tooltip: "plop - Sync error"}
+		return trayStatus{title: "Status: Error", tooltip: "plop - Sync error", iconState: icon.StatusLightAttention}
 	case state == "idle":
 		if dbStatus.NeedTotalItems > 0 {
-			return trayStatus{title: "Status: Syncing...", tooltip: "plop - Syncing..."}
+			return trayStatus{title: "Status: Syncing...", tooltip: "plop - Syncing...", iconState: icon.StatusLightSyncing}
 		}
 		if totalPeers > 0 && connected == 0 {
-			return trayStatus{title: "Status: Waiting for peers", tooltip: fmt.Sprintf("plop - Waiting for peers (0/%d connected)", totalPeers)}
+			return trayStatus{
+				title:     "Status: Waiting for peers",
+				tooltip:   fmt.Sprintf("plop - Waiting for peers (0/%d connected)", totalPeers),
+				iconState: icon.StatusLightAttention,
+			}
 		}
 		if totalPeers > 0 {
-			return trayStatus{title: "Status: Synced", tooltip: fmt.Sprintf("plop - Synced (%d/%d peers connected)", connected, totalPeers)}
+			return trayStatus{
+				title:     "Status: Synced",
+				tooltip:   fmt.Sprintf("plop - Synced (%d/%d peers connected)", connected, totalPeers),
+				iconState: icon.StatusLightSynced,
+			}
 		}
-		return trayStatus{title: "Status: Synced", tooltip: "plop - Synced"}
+		return trayStatus{title: "Status: Synced", tooltip: "plop - Synced", iconState: icon.StatusLightSynced}
 	case state == "":
-		return trayStatus{title: "Status: Starting...", tooltip: "plop - Starting..."}
+		return trayStatus{title: "Status: Starting...", tooltip: "plop - Starting...", iconState: icon.StatusLightSyncing}
 	default:
-		return trayStatus{title: "Status: Syncing...", tooltip: "plop - Syncing..."}
+		return trayStatus{title: "Status: Syncing...", tooltip: "plop - Syncing...", iconState: icon.StatusLightSyncing}
 	}
 }
 

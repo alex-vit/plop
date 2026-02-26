@@ -17,7 +17,7 @@
 - `go test -tags noassets ./...` runs all tests (currently centered in `engine/`).
 
 ## Coding Style & Naming Conventions
-- Follow standard Go formatting: run `gofmt -w` on edited files.
+- Prefer `goimports -w` on edited Go files (it also runs `gofmt` behavior while fixing imports). Use `gofmt -w` only if `goimports` is unavailable.
 - Keep packages focused by domain (`cmd`, `engine`, `tray`, `paths`).
 - Use short, descriptive lowercase package names; exported identifiers in `CamelCase`, unexported in `camelCase`.
 - Name platform-specific files with Go suffixes (`*_unix.go`, `*_windows.go`).
@@ -41,6 +41,7 @@
 - Requires Go `1.25+` and currently targets Syncthing `v1.30.0`.
 - Default config/data path is OS-specific; use `--home` to override during testing.
 - Do not commit local runtime artifacts (binaries, zips, logs, or generated config/state files).
+- Create temporary artifacts (for example screenshots, debug captures, and ad-hoc exports) in the OS temp directory by default (`$TMPDIR` on macOS, otherwise `/tmp`), not in the repository tree.
 
 ## Architecture Snapshot
 - `plop` is a P2P file sync CLI that embeds Syncthing `lib/` as a library (not a subprocess wrapper).

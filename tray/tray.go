@@ -23,11 +23,7 @@ func Run(version, homeDir, deviceID string) {
 }
 
 func onReady(version, homeDir, deviceID string) {
-	if runtime.GOOS == "darwin" {
-		systray.SetTemplateIcon(icon.Data, icon.Data)
-	} else {
-		systray.SetIcon(icon.DataICO)
-	}
+	setTrayIcon(icon.StatusLightSyncing)
 	systray.SetTooltip("plop")
 	systray.SetOnClick(func(menu systray.IMenu) { menu.ShowMenu() })
 	systray.SetOnRClick(func(menu systray.IMenu) { menu.ShowMenu() })
@@ -82,6 +78,15 @@ func onExit() {
 		stopStatusMonitor()
 		stopStatusMonitor = nil
 	}
+}
+
+func setTrayIcon(state icon.StatusLight) {
+	pngData, icoData := icon.BytesForStatusLight(state)
+	if runtime.GOOS == "darwin" {
+		systray.SetTemplateIcon(pngData, pngData)
+		return
+	}
+	systray.SetIcon(icoData)
 }
 
 func toggleAutostart(item *systray.MenuItem, homeDir string) {
