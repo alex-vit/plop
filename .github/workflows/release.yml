@@ -14,7 +14,29 @@ permissions:
   contents: write
 
 jobs:
-  windows-release:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+    steps:
+      - id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate tag format
+        run: |
+          tag="${{ steps.vars.outputs.tag }}"
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "invalid tag: $tag"
+            exit 1
+          fi
+
+  windows-build:
+    needs: prepare
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
@@ -25,27 +47,64 @@ jobs:
 
       - name: Build Windows executable and installer
         shell: pwsh
-        run: |
-          $tag = "${{ github.ref_name }}"
-          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            $tag = "${{ inputs.tag }}"
-          }
-          ./scripts/build-windows-release.ps1 -Version $tag
+        run: ./scripts/build-windows-release.ps1 -Version "${{ needs.prepare.outputs.tag }}"
 
       - name: Copy versioned artifacts
         shell: pwsh
         run: |
-          $tag = "${{ github.ref_name }}"
-          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            $tag = "${{ inputs.tag }}"
-          }
+          $tag = "${{ needs.prepare.outputs.tag }}"
           Copy-Item out/windows/plop.exe "out/windows/plop-$tag-windows-amd64.exe"
           Copy-Item out/windows/plop-setup.exe "out/windows/plop-$tag-windows-amd64-setup.exe"
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-assets
+          path: |
+            out/windows/plop-${{ needs.prepare.outputs.tag }}-windows-amd64.exe
+            out/windows/plop-${{ needs.prepare.outputs.tag }}-windows-amd64-setup.exe
+
+  macos-build:
+    needs: prepare
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build macOS app bundle
+        run: VERSION="${{ needs.prepare.outputs.tag }}" ./scripts/build-mac-app.sh
+
+      - name: Package macOS app bundle
+        run: |
+          tag="${{ needs.prepare.outputs.tag }}"
+          mkdir -p out/macos
+          ditto -c -k --sequesterRsrc --keepParent out/Plop.app "out/macos/plop-${tag}-macos-arm64-app.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-release-assets
+          path: |
+            out/Plop.app
+            out/macos/plop-${{ needs.prepare.outputs.tag }}-macos-arm64-app.zip
+
+  release:
+    needs:
+      - prepare
+      - windows-build
+      - macos-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          tag_name: ${{ needs.prepare.outputs.tag }}
           files: |
-            out/windows/plop-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}-windows-amd64.exe
-            out/windows/plop-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}-windows-amd64-setup.exe
+            dist/windows-release-assets/plop-${{ needs.prepare.outputs.tag }}-windows-amd64.exe
+            dist/windows-release-assets/plop-${{ needs.prepare.outputs.tag }}-windows-amd64-setup.exe
+            dist/macos-release-assets/plop-${{ needs.prepare.outputs.tag }}-macos-arm64-app.zip
           generate_release_notes: true
