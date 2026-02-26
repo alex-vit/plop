@@ -1,9 +1,14 @@
 name: Release
 
 on:
-  release:
-    types:
-      - published
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (for example v1.0.0)"
+        required: true
 
 permissions:
   contents: write
@@ -20,17 +25,27 @@ jobs:
 
       - name: Build Windows executable and installer
         shell: pwsh
-        run: ./scripts/build-windows-release.ps1 -Version "${{ github.event.release.tag_name }}"
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $tag = "${{ inputs.tag }}"
+          }
+          ./scripts/build-windows-release.ps1 -Version $tag
 
       - name: Copy versioned artifacts
         shell: pwsh
         run: |
-          Copy-Item out/windows/plop.exe "out/windows/plop-${{ github.event.release.tag_name }}-windows-amd64.exe"
-          Copy-Item out/windows/plop-setup.exe "out/windows/plop-${{ github.event.release.tag_name }}-windows-amd64-setup.exe"
+          $tag = "${{ github.ref_name }}"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $tag = "${{ inputs.tag }}"
+          }
+          Copy-Item out/windows/plop.exe "out/windows/plop-$tag-windows-amd64.exe"
+          Copy-Item out/windows/plop-setup.exe "out/windows/plop-$tag-windows-amd64-setup.exe"
 
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           files: |
-            out/windows/plop-${{ github.event.release.tag_name }}-windows-amd64.exe
-            out/windows/plop-${{ github.event.release.tag_name }}-windows-amd64-setup.exe
+            out/windows/plop-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}-windows-amd64.exe
+            out/windows/plop-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}-windows-amd64-setup.exe
           generate_release_notes: true
