@@ -181,7 +181,7 @@ func writeDefaultStignore(folderPath string) {
 	if _, err := os.Stat(p); err == nil {
 		return
 	}
-	os.WriteFile(p, []byte("// Syncthing internals\n.stfolder\n\n// OS junk\n.DS_Store\nThumbs.db\ndesktop.ini\n"), 0o644)
+	os.WriteFile(p, []byte("// OS junk\n.DS_Store\nThumbs.db\ndesktop.ini\n"), 0o644)
 }
 
 func generateAPIKey() string {

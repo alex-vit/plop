@@ -29,5 +29,14 @@ Source: "out\plop.exe"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\Plop"; Filename: "{app}\plop.exe"
 Name: "{group}\Uninstall Plop"; Filename: "{uninstallexe}"
 
+[Tasks]
+Name: "autostart"; Description: "Start with Windows"; GroupDescription: "Additional options:"
+
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Plop"; ValueData: """{app}\plop.exe"""; Flags: uninsdeletevalue; Tasks: autostart
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}"
+
 [Run]
 Filename: "{app}\plop.exe"; Description: "Launch Plop"; Flags: nowait postinstall skipifsilent
