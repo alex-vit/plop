@@ -15,6 +15,8 @@ import (
 	"github.com/energye/systray"
 )
 
+var stopStatusMonitor func()
+
 // Run blocks on the calling goroutine, showing the system tray icon.
 func Run(version, homeDir, deviceID string) {
 	systray.Run(func() { onReady(version, homeDir, deviceID) }, onExit)
@@ -35,6 +37,10 @@ func onReady(version, homeDir, deviceID string) {
 
 	mTitle := systray.AddMenuItem("plop "+displayVersion(version), "")
 	mTitle.Disable()
+
+	mStatus := systray.AddMenuItem("Status: Starting...", "Current sync status")
+	mStatus.Disable()
+	stopStatusMonitor = startStatusMonitor(homeDir, mStatus)
 
 	systray.AddSeparator()
 
@@ -71,7 +77,12 @@ func onReady(version, homeDir, deviceID string) {
 	mQuit.Click(func() { systray.Quit() })
 }
 
-func onExit() {}
+func onExit() {
+	if stopStatusMonitor != nil {
+		stopStatusMonitor()
+		stopStatusMonitor = nil
+	}
+}
 
 func toggleAutostart(item *systray.MenuItem, homeDir string) {
 	if item.Checked() {

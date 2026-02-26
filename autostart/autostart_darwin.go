@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	launchAgentLabel = "com.alexvit.plop"
-	launchAgentName  = launchAgentLabel + ".plist"
+	launchAgentLabel   = "com.alexvit.plop"
+	associatedBundleID = "com.alexvit.plop"
+	launchAgentName    = launchAgentLabel + ".plist"
 )
 
 func MenuLabel() string {
@@ -78,6 +79,10 @@ func launchAgentPlist(exePath, homeDir string) string {
 	b.WriteString("<dict>\n")
 	b.WriteString("  <key>Label</key>\n")
 	b.WriteString("  <string>" + xmlEscape(launchAgentLabel) + "</string>\n")
+	b.WriteString("  <key>AssociatedBundleIdentifiers</key>\n")
+	b.WriteString("  <array>\n")
+	b.WriteString("    <string>" + xmlEscape(associatedBundleID) + "</string>\n")
+	b.WriteString("  </array>\n")
 	b.WriteString("  <key>ProgramArguments</key>\n")
 	b.WriteString("  <array>\n")
 	for _, arg := range args {

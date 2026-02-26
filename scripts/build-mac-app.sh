@@ -25,7 +25,17 @@ go build \
 chmod +x "${MACOS_DIR}/${BIN_NAME}"
 
 if [[ -f "icon/icon.png" ]]; then
-  cp "icon/icon.png" "${RESOURCES_DIR}/AppIcon.png"
+  ICONSET_DIR="$(mktemp -d)"
+  mkdir -p "${ICONSET_DIR}/AppIcon.iconset"
+
+  # Build a standard .icns set from the source PNG (upscaling as needed).
+  for size in 16 32 128 256 512; do
+    sips -z "${size}" "${size}" "icon/icon.png" --out "${ICONSET_DIR}/AppIcon.iconset/icon_${size}x${size}.png" >/dev/null
+    sips -z "$((size*2))" "$((size*2))" "icon/icon.png" --out "${ICONSET_DIR}/AppIcon.iconset/icon_${size}x${size}@2x.png" >/dev/null
+  done
+
+  iconutil -c icns "${ICONSET_DIR}/AppIcon.iconset" -o "${RESOURCES_DIR}/AppIcon.icns"
+  rm -rf "${ICONSET_DIR}"
 fi
 
 cat > "${CONTENTS_DIR}/Info.plist" <<PLIST
@@ -48,7 +58,7 @@ cat > "${CONTENTS_DIR}/Info.plist" <<PLIST
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleIconFile</key>
-  <string>AppIcon</string>
+  <string>AppIcon.icns</string>
   <key>LSMinimumSystemVersion</key>
   <string>13.0</string>
   <key>NSHighResolutionCapable</key>
