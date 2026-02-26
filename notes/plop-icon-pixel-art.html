@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Plop Icon — Pixel Art v2</title>
+<style>
+  body { margin: 0; padding: 20px 40px; background: #f5f5f5; font-family: monospace; color: #1e1e1e; }
+  h1 { text-align: center; margin-bottom: 4px; }
+  h2 { text-align: center; color: #757575; font-weight: normal; font-size: 14px; margin-top: 0; }
+  .section { margin: 30px auto; max-width: 960px; }
+  .section h3 { border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+  .row { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; }
+  .icon-card { text-align: center; }
+  .icon-card .emoticon { font-size: 20px; margin-bottom: 2px; }
+  .icon-card .label { font-size: 13px; color: #666; margin-bottom: 6px; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+  .grid-canvas { border: 1px solid #ddd; background: #fafafa; }
+  .sizes { display: flex; gap: 20px; align-items: end; justify-content: center; margin: 16px 0; flex-wrap: wrap; }
+  .size-item { text-align: center; }
+  .size-item span { display: block; font-size: 11px; color: #999; margin-top: 2px; }
+  .dark-strip { background: #1e1e2e; padding: 20px; border-radius: 8px; margin-top: 16px; }
+  .dark-strip h4 { color: #ccc; margin: 0 0 12px 0; font-size: 14px; }
+  .tray { display: flex; gap: 8px; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 4px; width: fit-content; margin: 8px auto; }
+</style>
+</head>
+<body>
+<h1>Plop Icon — Pixel Art v2</h1>
+<h2>16x16 source of truth, nearest-neighbor scaled. Round symmetric blob, big expressive eyes.</h2>
+
+<script>
+// ── Palette ──
+const STATES = {
+  synced:  { label: 'Synced',  emoticon: '^_^', body: '#22c55e', outline: '#15803d', eye: '#1e1e1e' },
+  syncing: { label: 'Syncing', emoticon: 'o_o', body: '#f59e0b', outline: '#b45309', eye: '#1e1e1e' },
+  error:   { label: 'Error',   emoticon: '>_<', body: '#ef4444', outline: '#dc2626', eye: '#1e1e1e' },
+  offline: { label: 'Offline', emoticon: '-_-', body: '#9ca3af', outline: '#6b7280', eye: '#1e1e1e' },
+};
+
+// ── 16x16 source grids ──
+// . = transparent, O = outline, B = body, E = eye
+//
+// Blob: perfectly round & symmetric (left↔right, top↔bottom)
+// Eyes: symmetric, centered around row 7
+//   ^_^ arches:  5w x 3h (rows 6-8)
+//   o_o circles: 5w x 5h (rows 5-9) — ring with hollow center
+//   >_< crosses: 5w x 5h (rows 5-9)
+//   -_- lines:   5w x 1h (row 7)
+//
+// Eye positions: left eye cols 2-6, right eye cols 9-13, gap cols 7-8
+
+const GRID_16 = {
+  synced: [  // ^_^ happy arches (5x3)
+    '.....OOOOOO.....',  // 0
+    '...OOBBBBBBOO...',  // 1
+    '..OBBBBBBBBBBO..',  // 2
+    '.OBBBBBBBBBBBBO.',  // 3
+    '.OBBBBBBBBBBBBO.',  // 4
+    'OBBBBBBBBBBBBBBO',  // 5
+    'OBBBEBBBBBBEBBBO',  // 6  ^ peaks (col 4, 11)
+    'OBBEBEBBBBEBEBBO',  // 7  ^ mids  (col 3,5 & 10,12)
+    'OBEBBBEBBEBBBEBO',  // 8  ^ feet  (col 2,6 & 9,13)
+    'OBBBBBBBBBBBBBBO',  // 9
+    'OBBBBBBBBBBBBBBO',  // 10
+    '.OBBBBBBBBBBBBO.',  // 11
+    '.OBBBBBBBBBBBBO.',  // 12
+    '..OBBBBBBBBBBO..',  // 13
+    '...OOBBBBBBOO...',  // 14
+    '.....OOOOOO.....',  // 15
+  ],
+  syncing: [  // o_o hollow circle eyes (5x5)
+    '.....OOOOOO.....',  // 0
+    '...OOBBBBBBOO...',  // 1
+    '..OBBBBBBBBBBO..',  // 2
+    '.OBBBBBBBBBBBBO.',  // 3
+    '.OBBBBBBBBBBBBO.',  // 4
+    'OBBEEEBBBBEEEBBO',  // 5  top arc    (cols 3-5 & 10-12)
+    'OBEBBBEBBEBBBEBO',  // 6  sides      (cols 2,6 & 9,13)
+    'OBEBBBEBBEBBBEBO',  // 7  sides
+    'OBEBBBEBBEBBBEBO',  // 8  sides
+    'OBBEEEBBBBEEEBBO',  // 9  bottom arc (cols 3-5 & 10-12)
+    'OBBBBBBBBBBBBBBO',  // 10
+    '.OBBBBBBBBBBBBO.',  // 11
+    '.OBBBBBBBBBBBBO.',  // 12
+    '..OBBBBBBBBBBO..',  // 13
+    '...OOBBBBBBOO...',  // 14
+    '.....OOOOOO.....',  // 15
+  ],
+  error: [  // >_< cross eyes (5x5)
+    '.....OOOOOO.....',  // 0
+    '...OOBBBBBBOO...',  // 1
+    '..OBBBBBBBBBBO..',  // 2
+    '.OBBBBBBBBBBBBO.',  // 3
+    '.OBBBBBBBBBBBBO.',  // 4
+    'OBEBBBEBBEBBBEBO',  // 5  X corners  (cols 2,6 & 9,13)
+    'OBBEBEBBBBEBEBBO',  // 6  X inner    (cols 3,5 & 10,12)
+    'OBBBEBBBBBBEBBBO',  // 7  X center   (col 4 & 11)
+    'OBBEBEBBBBEBEBBO',  // 8  X inner    (cols 3,5 & 10,12)
+    'OBEBBBEBBEBBBEBO',  // 9  X corners  (cols 2,6 & 9,13)
+    'OBBBBBBBBBBBBBBO',  // 10
+    '.OBBBBBBBBBBBBO.',  // 11
+    '.OBBBBBBBBBBBBO.',  // 12
+    '..OBBBBBBBBBBO..',  // 13
+    '...OOBBBBBBOO...',  // 14
+    '.....OOOOOO.....',  // 15
+  ],
+  offline: [  // -_- wide flat lines (5x1)
+    '.....OOOOOO.....',  // 0
+    '...OOBBBBBBOO...',  // 1
+    '..OBBBBBBBBBBO..',  // 2
+    '.OBBBBBBBBBBBBO.',  // 3
+    '.OBBBBBBBBBBBBO.',  // 4
+    'OBBBBBBBBBBBBBBO',  // 5
+    'OBBBBBBBBBBBBBBO',  // 6
+    'OBEEEEEBBEEEEEBO',  // 7  flat lines (cols 2-6 & 9-13)
+    'OBBBBBBBBBBBBBBO',  // 8
+    'OBBBBBBBBBBBBBBO',  // 9
+    'OBBBBBBBBBBBBBBO',  // 10
+    '.OBBBBBBBBBBBBO.',  // 11
+    '.OBBBBBBBBBBBBO.',  // 12
+    '..OBBBBBBBBBBO..',  // 13
+    '...OOBBBBBBOO...',  // 14
+    '.....OOOOOO.....',  // 15
+  ],
+};
+
+// ── Verify all grids are 16x16 ──
+for (const [name, grid] of Object.entries(GRID_16)) {
+  if (grid.length !== 16) console.error(name + ': wrong row count ' + grid.length);
+  grid.forEach((row, i) => {
+    if (row.length !== 16) console.error(name + ' row ' + i + ': length ' + row.length + ' "' + row + '"');
+  });
+}
+
+// ── Rendering ──
+
+function charToColor(ch, colors) {
+  if (ch === 'O') return colors.outline;
+  if (ch === 'B') return colors.body;
+  if (ch === 'E') return colors.eye;
+  return null;
+}
+
+// Zoomed view with visible pixel grid
+function renderZoomed(grid, colors, pixelSize) {
+  const cols = grid[0].length, rows = grid.length;
+  const canvas = document.createElement('canvas');
+  canvas.className = 'grid-canvas';
+  canvas.width = cols * pixelSize;
+  canvas.height = rows * pixelSize;
+  const ctx = canvas.getContext('2d');
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const color = charToColor(grid[r][c], colors);
+      if (color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(c * pixelSize + 0.5, r * pixelSize + 0.5, pixelSize - 1, pixelSize - 1);
+      }
+    }
+  }
+  return canvas;
+}
+
+// 1:1 canvas for CSS scaling
+function renderClean(grid, colors) {
+  const cols = grid[0].length, rows = grid.length;
+  const canvas = document.createElement('canvas');
+  canvas.width = cols;
+  canvas.height = rows;
+  const ctx = canvas.getContext('2d');
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const color = charToColor(grid[r][c], colors);
+      if (color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(c, r, 1, 1);
+      }
+    }
+  }
+  return canvas;
+}
+
+function renderAtSize(grid, colors, displaySize) {
+  const canvas = renderClean(grid, colors);
+  canvas.style.width = displaySize + 'px';
+  canvas.style.height = displaySize + 'px';
+  return canvas;
+}
+
+function makeCard(state, canvas) {
+  const card = document.createElement('div');
+  card.className = 'icon-card';
+  card.innerHTML = '<div class="emoticon">' + STATES[state].emoticon + '</div><div class="label">' + STATES[state].label + '</div>';
+  card.appendChild(canvas);
+  return card;
+}
+
+// ── Build page ──
+document.addEventListener('DOMContentLoaded', () => {
+  const body = document.body;
+  const keys = ['synced', 'syncing', 'error', 'offline'];
+
+  // 1. Zoomed pixel grids
+  const s1 = document.createElement('div');
+  s1.className = 'section';
+  s1.innerHTML = '<h3>16x16 Source — Zoomed (each square = 1 pixel)</h3>';
+  const r1 = document.createElement('div');
+  r1.className = 'row';
+  for (const k of keys) r1.appendChild(makeCard(k, renderZoomed(GRID_16[k], STATES[k], 14)));
+  s1.appendChild(r1);
+  body.appendChild(s1);
+
+  // 2. All sizes
+  const s2 = document.createElement('div');
+  s2.className = 'section';
+  s2.innerHTML = '<h3>Scaled Sizes — nearest-neighbor from 16x16</h3>';
+  const sizes = [16, 24, 32, 48, 64, 128];
+  for (const k of keys) {
+    const strip = document.createElement('div');
+    strip.className = 'sizes';
+    const lbl = document.createElement('div');
+    lbl.className = 'size-item';
+    lbl.innerHTML = '<strong>' + STATES[k].emoticon + ' ' + STATES[k].label + '</strong>';
+    strip.appendChild(lbl);
+    for (const sz of sizes) {
+      const item = document.createElement('div');
+      item.className = 'size-item';
+      item.appendChild(renderAtSize(GRID_16[k], STATES[k], sz));
+      item.innerHTML += '<span>' + sz + 'px</span>';
+      strip.appendChild(item);
+    }
+    s2.appendChild(strip);
+  }
+  body.appendChild(s2);
+
+  // 3. Tray simulation
+  const s3 = document.createElement('div');
+  s3.className = 'section';
+  s3.innerHTML = '<h3>Tray Simulation</h3>';
+  for (const [bg, label] of [['#e5e5e5', 'Light taskbar'], ['#2d2d2d', 'Dark taskbar']]) {
+    const tray = document.createElement('div');
+    tray.className = 'tray';
+    tray.style.background = bg;
+    const txt = document.createElement('span');
+    txt.style.color = bg === '#2d2d2d' ? '#999' : '#666';
+    txt.style.fontSize = '12px';
+    txt.style.marginRight = '8px';
+    txt.textContent = label + ':';
+    tray.appendChild(txt);
+    for (const sz of [16, 20, 24, 32]) {
+      for (const k of keys) tray.appendChild(renderAtSize(GRID_16[k], STATES[k], sz));
+      if (sz < 32) {
+        const sep = document.createElement('span');
+        sep.style.cssText = 'width:1px;height:20px;background:' + (bg === '#2d2d2d' ? '#555' : '#bbb');
+        tray.appendChild(sep);
+      }
+    }
+    s3.appendChild(tray);
+  }
+  body.appendChild(s3);
+
+  // 4. Dark bg all sizes
+  const s4 = document.createElement('div');
+  s4.className = 'section';
+  const dark = document.createElement('div');
+  dark.className = 'dark-strip';
+  dark.innerHTML = '<h4>All sizes on dark background</h4>';
+  for (const k of keys) {
+    const strip = document.createElement('div');
+    strip.className = 'sizes';
+    const lbl = document.createElement('div');
+    lbl.className = 'size-item';
+    lbl.innerHTML = '<strong style="color:#ccc">' + STATES[k].emoticon + ' ' + STATES[k].label + '</strong>';
+    strip.appendChild(lbl);
+    for (const sz of [16, 32, 48, 64, 128]) {
+      const item = document.createElement('div');
+      item.className = 'size-item';
+      item.appendChild(renderAtSize(GRID_16[k], STATES[k], sz));
+      item.innerHTML += '<span style="color:#777">' + sz + 'px</span>';
+      strip.appendChild(item);
+    }
+    dark.appendChild(strip);
+  }
+  s4.appendChild(dark);
+  body.appendChild(s4);
+});
+</script>
+</body>
+</html>
