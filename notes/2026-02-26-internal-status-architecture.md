@@ -51,6 +51,55 @@ Expose sync health from Syncthing internals through stable in-process and local 
 4. Add IPC-backed `plop status` and prefer it over REST.
 5. Remove legacy REST polling in tray.
 
+# First Steps (Implementation Plan)
+
+## PR 1: Add engine-native status service (no behavior change yet)
+
+1. Add `engine/status_snapshot.go`:
+   - define `StatusState` constants (`starting`, `syncing`, `synced`, `waiting_peers`, `error`, `unavailable`)
+   - define `StatusSnapshot` struct from this doc.
+2. Add `engine/status_service.go`:
+   - keep latest snapshot in memory (`sync.RWMutex`)
+   - expose `Snapshot()` and `Updates()` (buffered channel, drop-old-on-slow-consumer)
+   - compute snapshot using:
+     - `cfgWrapper.RawCopy()`
+     - `app.Internals.FolderState(folderID)`
+     - `app.Internals.DBSnapshot(folderID)` + `NeedSize(protocol.LocalDeviceID)`
+     - `app.Internals.IsConnectedTo(deviceID)`
+   - run refresh loop with:
+     - periodic polling (for example every 2-4s) as safety net
+     - event-triggered refresh via `evLogger.Subscribe(...)`.
+3. Wire into `engine/engine.go`:
+   - store `statusSvc` on `Engine`
+   - start it in `Start()` after `app.Start()`
+   - stop it in `Stop()`
+   - add `Engine.StatusSnapshot()` and `Engine.StatusUpdates()`.
+4. Tests:
+   - add table-driven mapping tests for state derivation (pure function).
+   - add service test that verifies update publication and monotonic `UpdatedAt`.
+
+## PR 2: Move tray from REST polling to engine updates
+
+1. Change tray entrypoint to accept a status source from engine (instead of only `homeDir`).
+2. Replace `tray/status_monitor.go` REST polling with snapshot subscription:
+   - subscribe once on startup
+   - map `StatusSnapshot` -> tray title/tooltip/icon.
+3. Keep current strings/icons stable to minimize UX churn.
+4. Regression test manually:
+   - start app, edit `peers.txt`, disconnect/reconnect peer, verify tray transitions without REST failures.
+
+## PR 3: Prepare `plop status` migration (keep fallback)
+
+1. Keep current REST output path in `cmd/status.go`.
+2. Add internal-status read path (IPC or heartbeat file) behind feature detection.
+3. Prefer internal status when present; fall back to REST for one release.
+
+## Scope Guardrails
+
+1. Do not add IPC transport in PR 1.
+2. Do not remove REST fallback for CLI in this iteration.
+3. Prioritize tray correctness first, then CLI migration.
+
 # Test Plan
 
 1. Unit tests for status mapping:
