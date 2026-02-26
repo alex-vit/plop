@@ -107,9 +107,10 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 		return nil, err
 	}
 
-	// Ensure sync folders and .stignore exist.
+	// Ensure sync folders, .stfolder marker, and .stignore exist.
 	for _, folder := range cfg.Folders {
 		os.MkdirAll(folder.Path, 0o755)
+		os.MkdirAll(filepath.Join(folder.Path, ".stfolder"), 0o755)
 		writeDefaultStignore(folder.Path)
 	}
 
