@@ -29,3 +29,9 @@ go.work.sum
 
 # Project binary
 plop
+
+# macOS Finder metadata
+.DS_Store
+
+# Local build output
+out/

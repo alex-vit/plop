@@ -9,13 +9,14 @@ plop is a P2P file sync CLI — a "dumbed down Syncthing" that embeds Syncthing'
 ## Build & Test
 
 ```bash
-# Build (noassets tag is REQUIRED — Syncthing GUI assets aren't in the Go module)
+# Build a double-clickable macOS app bundle (.app)
+./scripts/build-mac-app.sh
+
+# Build plain CLI binary (noassets tag is REQUIRED — Syncthing GUI assets aren't in the Go module)
 go build -tags noassets -o plop .
 
-# E2E integration test (builds, runs two instances, syncs a file)
-bash test_sync.sh
-
-# No unit tests yet — no *_test.go files
+# E2E integration test
+go test -tags noassets -v -count=1 -timeout 3m ./engine/
 ```
 
 Requires **Go 1.25+**. Pinned to **Syncthing v1.30.0**.
