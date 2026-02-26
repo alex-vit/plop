@@ -14,7 +14,6 @@ const defaultStatusFileWriteInterval = 3 * time.Second
 
 type statusFileWriter struct {
 	path     string
-	updates  <-chan StatusSnapshot
 	snapshot func() StatusSnapshot
 
 	writeInterval time.Duration
@@ -25,10 +24,9 @@ type statusFileWriter struct {
 	doneCh  chan struct{}
 }
 
-func newStatusFileWriter(path string, updates <-chan StatusSnapshot, snapshot func() StatusSnapshot) *statusFileWriter {
+func newStatusFileWriter(path string, snapshot func() StatusSnapshot) *statusFileWriter {
 	return &statusFileWriter{
 		path:          path,
-		updates:       updates,
 		snapshot:      snapshot,
 		writeInterval: defaultStatusFileWriteInterval,
 	}
@@ -81,18 +79,11 @@ func (w *statusFileWriter) run(stopCh <-chan struct{}, doneCh chan<- struct{}, w
 	ticker := time.NewTicker(writeInterval)
 	defer ticker.Stop()
 
-	updates := w.updates
 	for {
 		select {
 		case <-stopCh:
 			return
 		case <-ticker.C:
-			_ = writeStatusSnapshotFile(w.path, w.snapshot())
-		case _, ok := <-updates:
-			if !ok {
-				updates = nil
-				continue
-			}
 			_ = writeStatusSnapshotFile(w.path, w.snapshot())
 		}
 	}

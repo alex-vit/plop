@@ -24,13 +24,12 @@ func TestStatusFileWriterWritesUpdatesAndRemovesFileOnStop(t *testing.T) {
 		}
 	)
 
-	updates := make(chan StatusSnapshot, 4)
-	writer := newStatusFileWriter(path, updates, func() StatusSnapshot {
+	writer := newStatusFileWriter(path, func() StatusSnapshot {
 		mu.RLock()
 		defer mu.RUnlock()
 		return snapshot
 	})
-	writer.writeInterval = time.Hour
+	writer.writeInterval = 20 * time.Millisecond
 	writer.Start()
 	t.Cleanup(writer.Stop)
 
@@ -41,12 +40,6 @@ func TestStatusFileWriterWritesUpdatesAndRemovesFileOnStop(t *testing.T) {
 	snapshot.NeedTotalItems = 3
 	snapshot.UpdatedAt = time.Now().UTC()
 	mu.Unlock()
-
-	select {
-	case updates <- StatusSnapshot{}:
-	default:
-		t.Fatal("failed to trigger status file write update")
-	}
 
 	waitForStatusState(t, path, StatusStateSyncing)
 

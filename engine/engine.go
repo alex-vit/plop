@@ -164,7 +164,7 @@ func (e *Engine) Start() error {
 	}
 	e.statusSvc = newStatusService(e.cfgWrapper, newSyncthingStatusRuntime(e.app.Internals), newStatusEventSource(e.evLogger), e.DeviceID())
 	e.statusSvc.Start()
-	e.statusFileWriter = newStatusFileWriter(filepath.Join(e.homeDir, StatusFileName), e.statusSvc.Updates(), e.statusSvc.Snapshot)
+	e.statusFileWriter = newStatusFileWriter(filepath.Join(e.homeDir, StatusFileName), e.statusSvc.Snapshot)
 	e.statusFileWriter.Start()
 
 	ctx, cancel := context.WithCancel(context.Background())
