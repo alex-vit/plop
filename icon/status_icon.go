@@ -16,15 +16,22 @@ const (
 	StatusLightAttention
 )
 
+// Traffic-light colors for tray icon (Windows ICO + macOS PNG).
+var statusColors = map[StatusLight]color.NRGBA{
+	StatusLightSynced:    {R: 0x22, G: 0xC5, B: 0x5E, A: 0xFF}, // green
+	StatusLightSyncing:   {R: 0xEA, G: 0xB3, B: 0x08, A: 0xFF}, // yellow/amber
+	StatusLightAttention: {R: 0xEF, G: 0x44, B: 0x44, A: 0xFF}, // red
+}
+
 type statusIconData struct {
 	png []byte
 	ico []byte
 }
 
 var generatedStatusIcons = map[StatusLight]statusIconData{
-	StatusLightSynced:    buildStatusIcon(2), // Bottom lamp.
-	StatusLightSyncing:   buildStatusIcon(1), // Middle lamp.
-	StatusLightAttention: buildStatusIcon(0), // Top lamp.
+	StatusLightSynced:    buildStatusIcon(StatusLightSynced),
+	StatusLightSyncing:   buildStatusIcon(StatusLightSyncing),
+	StatusLightAttention: buildStatusIcon(StatusLightAttention),
 }
 
 func BytesForStatusLight(state StatusLight) (pngData, icoData []byte) {
@@ -34,95 +41,43 @@ func BytesForStatusLight(state StatusLight) (pngData, icoData []byte) {
 	return Data, DataICO
 }
 
-func buildStatusIcon(activeLamp int) statusIconData {
-	icoSizes := []int{32}
-	pngs := make([][]byte, 0, len(icoSizes))
+func buildStatusIcon(state StatusLight) statusIconData {
+	c := statusColors[state]
+
+	// ICO: colorful filled circle for Windows (16+32 px).
+	icoSizes := []int{16, 32}
+	icoPngs := make([][]byte, 0, len(icoSizes))
 	for _, size := range icoSizes {
-		pngs = append(pngs, encodePNG(drawTrafficLight(size, activeLamp)))
+		icoPngs = append(icoPngs, encodePNG(drawColorCircle(size, c)))
 	}
 
+	// PNG: colorful filled circle for macOS menu bar (22px per convention).
 	return statusIconData{
-		png: encodePNG(drawTrafficLight(24, activeLamp)),
-		ico: buildICO(icoSizes, pngs),
+		png: encodePNG(drawColorCircle(22, c)),
+		ico: buildICO(icoSizes, icoPngs),
 	}
 }
 
-func drawTrafficLight(size, activeLamp int) *image.NRGBA {
+// drawColorCircle draws a filled circle in the given color, centered in a
+// size×size image. Hard pixel edges, no anti-aliasing.
+func drawColorCircle(size int, c color.NRGBA) *image.NRGBA {
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
-	black := color.NRGBA{0, 0, 0, 255}
 
-	set := func(x, y int) {
-		if x >= 0 && x < size && y >= 0 && y < size {
-			img.Set(x, y, black)
+	center := float64(size) / 2
+	radius := center - 1 // 1px margin
+
+	for y := range size {
+		for x := range size {
+			px := float64(x) + 0.5
+			py := float64(y) + 0.5
+			dx := px - center
+			dy := py - center
+			if dx*dx+dy*dy <= radius*radius {
+				img.SetNRGBA(x, y, c)
+			}
 		}
 	}
-
-	radius := size / 7
-	if radius < 2 {
-		radius = 2
-	}
-
-	margin := (size - 6*radius) / 4
-	if margin < 1 {
-		margin = 1
-	}
-
-	cx := size / 2
-	step := 2*radius + margin
-	centers := [3]int{
-		margin + radius,
-		margin + radius + step,
-		margin + radius + step*2,
-	}
-
-	left := cx - radius - 2
-	right := cx + radius + 2
-	top := centers[0] - radius - 2
-	bottom := centers[2] + radius + 2
-	drawRectOutline(set, left, top, right, bottom)
-
-	for i, cy := range centers {
-		drawCircle(set, cx, cy, radius, false)
-		if i == activeLamp {
-			drawCircle(set, cx, cy, radius-1, true)
-		}
-	}
-
 	return img
-}
-
-func drawRectOutline(set func(x, y int), left, top, right, bottom int) {
-	for x := left; x <= right; x++ {
-		set(x, top)
-		set(x, bottom)
-	}
-	for y := top; y <= bottom; y++ {
-		set(left, y)
-		set(right, y)
-	}
-}
-
-func drawCircle(set func(x, y int), cx, cy, r int, fill bool) {
-	if r <= 0 {
-		return
-	}
-
-	outer := r * r
-	inner := (r - 1) * (r - 1)
-	for dy := -r; dy <= r; dy++ {
-		for dx := -r; dx <= r; dx++ {
-			dist2 := dx*dx + dy*dy
-			if fill {
-				if dist2 <= outer {
-					set(cx+dx, cy+dy)
-				}
-				continue
-			}
-			if dist2 <= outer && dist2 >= inner {
-				set(cx+dx, cy+dy)
-			}
-		}
-	}
 }
 
 func encodePNG(img image.Image) []byte {

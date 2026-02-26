@@ -84,7 +84,7 @@ func onExit() {
 func setTrayIcon(state icon.StatusLight) {
 	pngData, icoData := icon.BytesForStatusLight(state)
 	if runtime.GOOS == "darwin" {
-		systray.SetTemplateIcon(pngData, pngData)
+		systray.SetIcon(pngData)
 		return
 	}
 	systray.SetIcon(icoData)
