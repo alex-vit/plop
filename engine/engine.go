@@ -23,9 +23,11 @@ import (
 type Engine struct {
 	app              *syncthing.App
 	cfgWrapper       config.Wrapper
+	evLogger         events.Logger
 	earlyService     *suture.Supervisor
 	earlyServiceStop context.CancelFunc
 	peerWatchStop    context.CancelFunc
+	statusSvc        *statusService
 	cert             tls.Certificate
 	homeDir          string
 }
@@ -145,6 +147,7 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 	return &Engine{
 		app:              app,
 		cfgWrapper:       cfgWrapper,
+		evLogger:         evLogger,
 		earlyService:     earlyService,
 		earlyServiceStop: cancel,
 		cert:             cert,
@@ -156,6 +159,9 @@ func (e *Engine) Start() error {
 	if err := e.app.Start(); err != nil {
 		return err
 	}
+	e.statusSvc = newStatusService(e.cfgWrapper, newSyncthingStatusRuntime(e.app.Internals), newStatusEventSource(e.evLogger), e.DeviceID())
+	e.statusSvc.Start()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	e.peerWatchStop = cancel
 	go e.watchPeers(ctx)
@@ -170,12 +176,35 @@ func (e *Engine) Stop() {
 	if e.peerWatchStop != nil {
 		e.peerWatchStop()
 	}
+	if e.statusSvc != nil {
+		e.statusSvc.Stop()
+	}
 	e.app.Stop(svcutil.ExitSuccess)
 	e.earlyServiceStop()
 }
 
 func (e *Engine) DeviceID() protocol.DeviceID {
 	return DeviceID(e.cert)
+}
+
+// StatusSnapshot returns the latest cached internal status snapshot.
+func (e *Engine) StatusSnapshot() StatusSnapshot {
+	if e.statusSvc == nil {
+		return StatusSnapshot{
+			State:     StatusStateUnavailable,
+			Error:     "status service not started",
+			UpdatedAt: time.Now().UTC(),
+		}
+	}
+	return e.statusSvc.Snapshot()
+}
+
+// StatusUpdates returns a channel with status snapshot updates.
+func (e *Engine) StatusUpdates() <-chan StatusSnapshot {
+	if e.statusSvc == nil {
+		return nil
+	}
+	return e.statusSvc.Updates()
 }
 
 // PeersFilePath returns the path to the peers.txt file.
