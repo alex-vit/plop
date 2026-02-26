@@ -29,6 +29,7 @@ type Engine struct {
 	earlyServiceStop context.CancelFunc
 	peerWatchStop    context.CancelFunc
 	statusSvc        *statusService
+	statusFileWriter *statusFileWriter
 	cert             tls.Certificate
 	homeDir          string
 }
@@ -163,6 +164,8 @@ func (e *Engine) Start() error {
 	}
 	e.statusSvc = newStatusService(e.cfgWrapper, newSyncthingStatusRuntime(e.app.Internals), newStatusEventSource(e.evLogger), e.DeviceID())
 	e.statusSvc.Start()
+	e.statusFileWriter = newStatusFileWriter(filepath.Join(e.homeDir, StatusFileName), e.statusSvc.Updates(), e.statusSvc.Snapshot)
+	e.statusFileWriter.Start()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	e.peerWatchStop = cancel
@@ -177,6 +180,9 @@ func (e *Engine) Wait() svcutil.ExitStatus {
 func (e *Engine) Stop() {
 	if e.peerWatchStop != nil {
 		e.peerWatchStop()
+	}
+	if e.statusFileWriter != nil {
+		e.statusFileWriter.Stop()
 	}
 	if e.statusSvc != nil {
 		e.statusSvc.Stop()

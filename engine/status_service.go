@@ -274,6 +274,9 @@ func (s *statusService) computeSnapshot() StatusSnapshot {
 		snapshot.Error = "no folders configured"
 		return snapshot
 	}
+	if s.localID != protocol.EmptyDeviceID {
+		snapshot.DeviceID = s.localID.String()
+	}
 
 	folderID := cfg.Folders[0].ID
 	snapshot.FolderID = folderID
@@ -336,6 +339,7 @@ func deriveStatusState(folderState string, needTotalItems, connectedPeers, total
 
 func snapshotEqualIgnoringUpdatedAt(a, b StatusSnapshot) bool {
 	return a.State == b.State &&
+		a.DeviceID == b.DeviceID &&
 		a.FolderID == b.FolderID &&
 		a.FolderState == b.FolderState &&
 		a.NeedTotalItems == b.NeedTotalItems &&

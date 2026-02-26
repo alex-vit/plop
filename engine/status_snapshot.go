@@ -14,6 +14,7 @@ const (
 )
 
 type StatusSnapshot struct {
+	DeviceID       string      `json:"deviceID,omitempty"`
 	State          StatusState `json:"state"`
 	FolderID       string      `json:"folderID,omitempty"`
 	FolderState    string      `json:"folderState,omitempty"`
