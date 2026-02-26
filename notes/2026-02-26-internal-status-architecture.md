@@ -3,7 +3,7 @@ title: Internal Status Architecture (No Log Parsing)
 created: 2026-02-26
 updated: 2026-02-26
 tags: [architecture, status, tray, syncthing]
-status: proposed
+status: implemented
 ---
 
 # Problem
@@ -50,6 +50,14 @@ Expose sync health from Syncthing internals through stable in-process and local 
 3. Keep REST-based `plop status` as fallback for one release.
 4. Add IPC-backed `plop status` and prefer it over REST.
 5. Remove legacy REST polling in tray.
+
+# Implementation Status
+
+Completed on 2026-02-26:
+
+1. PR1 `2002cf8`: engine-native status service + typed snapshot + tests.
+2. PR2 `237d788`: tray switched to `Engine.StatusUpdates()` (no REST tray polling).
+3. PR3 `a5184d2`: `status.json` heartbeat and `plop status` internal-first fallback.
 
 # First Steps (Implementation Plan)
 
