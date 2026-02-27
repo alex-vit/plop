@@ -70,6 +70,7 @@ func Execute() {
 }
 
 func init() {
+	cobra.MousetrapHelpText = "" // Allow launching from Explorer (GUI app, not a CLI tool).
 	defaultHome, _ := paths.ConfigDir()
 	rootCmd.PersistentFlags().StringVar(&homeDir, "home", defaultHome, "plop data directory")
 }
