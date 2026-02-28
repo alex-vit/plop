@@ -33,10 +33,7 @@ func onReady(version, homeDir, deviceID string, statusUpdates <-chan engine.Stat
 		systray.SetOnDClick(func(menu systray.IMenu) { openSyncFolder(homeDir) })
 	}
 
-	mTitle := systray.AddMenuItem("plop "+displayVersion(version), "")
-	mTitle.Disable()
-
-	mStatus := systray.AddMenuItem("Status: Starting...", "Current sync status")
+	mStatus := systray.AddMenuItem("", "")
 	mStatus.Disable()
 
 	// Pre-allocate peer slots immediately after the status item so they appear in-line.
@@ -50,7 +47,7 @@ func onReady(version, homeDir, deviceID string, statusUpdates <-chan engine.Stat
 		peerItems[i] = item
 	}
 
-	stopStatusMonitor = startStatusMonitor(statusUpdates, mStatus, peerItems)
+	stopStatusMonitor = startStatusMonitor(statusUpdates, mStatus, peerItems, displayVersion(version))
 
 	systray.AddSeparator()
 

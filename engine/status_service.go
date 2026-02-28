@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -312,9 +313,21 @@ func buildPeerStatuses(devices []config.DeviceConfiguration, localID protocol.De
 		}
 		peers = append(peers, PeerStatus{
 			ShortID:   shortDeviceID(device.DeviceID),
+			Name:      device.Name,
 			Connected: rt.IsConnectedTo(device.DeviceID),
 		})
 	}
+	sort.Slice(peers, func(i, j int) bool {
+		li := peers[i].Name
+		if li == "" {
+			li = peers[i].ShortID
+		}
+		lj := peers[j].Name
+		if lj == "" {
+			lj = peers[j].ShortID
+		}
+		return li < lj
+	})
 	return peers
 }
 

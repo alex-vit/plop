@@ -64,7 +64,7 @@ func pairPeer(peerID protocol.DeviceID) (bool, error) {
 	// Check if already present.
 	existing, _ := engine.ParsePeersFile(peersFile)
 	for _, p := range existing {
-		if p == peerID {
+		if p.ID == peerID {
 			fmt.Printf("Already paired with %s\n", peerID)
 			return false, nil
 		}

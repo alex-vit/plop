@@ -15,6 +15,7 @@ const (
 
 type PeerStatus struct {
 	ShortID   string `json:"shortID"`
+	Name      string `json:"name,omitempty"`
 	Connected bool   `json:"connected"`
 }
 

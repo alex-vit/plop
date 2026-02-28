@@ -11,23 +11,21 @@ import (
 )
 
 type trayStatus struct {
-	title     string
-	tooltip   string
+	label     string
 	iconState icon.StatusLight
 }
 
-func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.MenuItem, peerItems []*systray.MenuItem) func() {
+func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.MenuItem, peerItems []*systray.MenuItem, version string) func() {
 	stop := make(chan struct{})
 	var once sync.Once
 
 	go func() {
 		current := trayStatus{}
 		apply := func(next trayStatus) {
-			if next.title != current.title {
-				item.SetTitle(next.title)
-			}
-			if next.tooltip != current.tooltip {
-				systray.SetTooltip(next.tooltip)
+			if next.label != current.label {
+				display := "Plop " + version + next.label[len("Plop"):]
+				item.SetTitle(display)
+				systray.SetTooltip(display)
 			}
 			if next.iconState != current.iconState {
 				setTrayIcon(next.iconState)
@@ -38,11 +36,15 @@ func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.Menu
 		applyPeers := func(peers []engine.PeerStatus) {
 			for i, slot := range peerItems {
 				if i < len(peers) {
-					icon := "○ "
+					indicator := "✗ "
 					if peers[i].Connected {
-						icon = "● "
+						indicator = "✓ "
 					}
-					slot.SetTitle(icon + peers[i].ShortID)
+					label := peers[i].Name
+					if label == "" {
+						label = peers[i].ShortID
+					}
+					slot.SetTitle(indicator + label)
 					slot.Show()
 				} else {
 					slot.Hide()
@@ -77,79 +79,35 @@ func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.Menu
 }
 
 func trayStatusFromSnapshot(snapshot engine.StatusSnapshot) trayStatus {
+	peers := func() string {
+		if snapshot.TotalPeers == 0 {
+			return "no peers"
+		}
+		return fmt.Sprintf("%d/%d peers", snapshot.ConnectedPeers, snapshot.TotalPeers)
+	}
+
 	switch snapshot.State {
 	case engine.StatusStateError:
-		return trayStatus{
-			title:     "Status: Error",
-			tooltip:   "plop - Sync error",
-			iconState: icon.StatusLightAttention,
-		}
+		return trayStatus{label: "Plop: error", iconState: icon.StatusLightAttention}
 	case engine.StatusStateUnavailable:
-		return trayStatus{
-			title:     "Status: Unavailable",
-			tooltip:   "plop - Status unavailable",
-			iconState: icon.StatusLightAttention,
-		}
+		return trayStatus{label: "Plop: unavailable", iconState: icon.StatusLightAttention}
 	case engine.StatusStateWaitingPeers:
-		if snapshot.TotalPeers > 0 {
-			return trayStatus{
-				title:     "Status: Waiting for peers",
-				tooltip:   fmt.Sprintf("plop - Waiting for peers (%d/%d connected)", snapshot.ConnectedPeers, snapshot.TotalPeers),
-				iconState: icon.StatusLightOffline,
-			}
-		}
-		return trayStatus{
-			title:     "Status: Waiting for peers",
-			tooltip:   "plop - Waiting for peers",
-			iconState: icon.StatusLightOffline,
-		}
+		return trayStatus{label: fmt.Sprintf("Plop: waiting (%s)", peers()), iconState: icon.StatusLightOffline}
 	case engine.StatusStateSynced:
-		if snapshot.TotalPeers > 0 {
-			return trayStatus{
-				title:     "Status: Synced",
-				tooltip:   fmt.Sprintf("plop - Synced (%d/%d peers connected)", snapshot.ConnectedPeers, snapshot.TotalPeers),
-				iconState: icon.StatusLightSynced,
-			}
-		}
-		return trayStatus{
-			title:     "Status: Synced",
-			tooltip:   "plop - Synced",
-			iconState: icon.StatusLightSynced,
-		}
+		return trayStatus{label: fmt.Sprintf("Plop: synced (%s)", peers()), iconState: icon.StatusLightSynced}
 	case engine.StatusStateSyncing:
-		return trayStatus{
-			title:     "Status: Syncing...",
-			tooltip:   "plop - Syncing...",
-			iconState: icon.StatusLightSyncing,
-		}
+		return trayStatus{label: fmt.Sprintf("Plop: syncing (%s)", peers()), iconState: icon.StatusLightSyncing}
 	case engine.StatusStateStarting:
-		return trayStatus{
-			title:     "Status: Starting...",
-			tooltip:   "plop - Starting...",
-			iconState: icon.StatusLightSyncing,
-		}
+		return trayStatus{label: "Plop: starting...", iconState: icon.StatusLightSyncing}
 	default:
-		// Defensive fallback for unknown states.
 		folderState := strings.ToLower(strings.TrimSpace(snapshot.FolderState))
 		switch {
 		case folderState == "":
-			return trayStatus{
-				title:     "Status: Starting...",
-				tooltip:   "plop - Starting...",
-				iconState: icon.StatusLightSyncing,
-			}
+			return trayStatus{label: "Plop: starting...", iconState: icon.StatusLightSyncing}
 		case strings.Contains(folderState, "error") || folderState == "unknown":
-			return trayStatus{
-				title:     "Status: Error",
-				tooltip:   "plop - Sync error",
-				iconState: icon.StatusLightAttention,
-			}
+			return trayStatus{label: "Plop: error", iconState: icon.StatusLightAttention}
 		default:
-			return trayStatus{
-				title:     "Status: Syncing...",
-				tooltip:   "plop - Syncing...",
-				iconState: icon.StatusLightSyncing,
-			}
+			return trayStatus{label: fmt.Sprintf("Plop: syncing (%s)", peers()), iconState: icon.StatusLightSyncing}
 		}
 	}
 }

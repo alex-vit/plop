@@ -35,7 +35,7 @@ if (-not $NoBuild) {
 
 # 3. Copy to install dir
 if (-not (Test-Path $InstallDir)) {
-    throw "Plop is not installed at $InstallDir — run the installer first"
+    throw "Plop is not installed at $InstallDir - run the installer first"
 }
 Copy-Item $OutExe $InstallExe -Force
 

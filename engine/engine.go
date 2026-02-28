@@ -58,7 +58,7 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 		existing, _ := ParsePeersFile(peersFile)
 		seen := make(map[protocol.DeviceID]bool, len(existing))
 		for _, p := range existing {
-			seen[p] = true
+			seen[p.ID] = true
 		}
 		for _, p := range peers {
 			if !seen[p] {
@@ -72,7 +72,7 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 	// Ensure peers.txt exists so "Open Settings" always has a file to open.
 	peersFile := filepath.Join(homeDir, "peers.txt")
 	if _, err := os.Stat(peersFile); os.IsNotExist(err) {
-		os.WriteFile(peersFile, []byte("# Add one device ID per line\n"), 0o644)
+		os.WriteFile(peersFile, []byte("# Add one device ID per line.\n# Optionally add a friendly name after the ID or as a comment above it:\n# XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX Mom's iPad\n# # Mom's iPad\n# XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX\n"), 0o644)
 	}
 
 	// Collect all desired peers from peers.txt.
@@ -253,10 +253,10 @@ func (e *Engine) syncPeers() {
 }
 
 // syncPeersConfig reconciles cfg to have exactly the desired set of peers.
-func syncPeersConfig(cfg *config.Configuration, myID protocol.DeviceID, desired []protocol.DeviceID) {
+func syncPeersConfig(cfg *config.Configuration, myID protocol.DeviceID, desired []PeerEntry) {
 	want := make(map[protocol.DeviceID]bool, len(desired))
 	for _, p := range desired {
-		want[p] = true
+		want[p.ID] = true
 	}
 
 	// Remove peers not in desired set (skip self).
@@ -273,9 +273,9 @@ func syncPeersConfig(cfg *config.Configuration, myID protocol.DeviceID, desired 
 		RemovePeer(cfg, id)
 	}
 
-	// Add missing peers.
+	// Add missing peers and update names.
 	for _, p := range desired {
-		AddPeer(cfg, p)
+		AddPeer(cfg, p.ID, p.Name)
 	}
 }
 

@@ -19,7 +19,7 @@ const DefaultFolderID = "default"
 // NewConfig creates a minimal Syncthing configuration for plop:
 // single folder, LAN + WAN discovery, relay-capable.
 // TODO: RawGlobalAnnServers could be made configurable for self-hosted discovery servers.
-func NewConfig(myID protocol.DeviceID, folderPath string, peers []protocol.DeviceID) config.Configuration {
+func NewConfig(myID protocol.DeviceID, folderPath string, peers []PeerEntry) config.Configuration {
 	cfg := config.New(myID)
 
 	folder := config.FolderConfiguration{
@@ -35,9 +35,10 @@ func NewConfig(myID protocol.DeviceID, folderPath string, peers []protocol.Devic
 
 	folder.Devices = append(folder.Devices, config.FolderDeviceConfiguration{DeviceID: myID})
 	for _, p := range peers {
-		folder.Devices = append(folder.Devices, config.FolderDeviceConfiguration{DeviceID: p})
+		folder.Devices = append(folder.Devices, config.FolderDeviceConfiguration{DeviceID: p.ID})
 		cfg.Devices = append(cfg.Devices, config.DeviceConfiguration{
-			DeviceID:  p,
+			DeviceID:  p.ID,
+			Name:      p.Name,
 			Addresses: []string{"dynamic"},
 		})
 	}
@@ -126,15 +127,20 @@ func SaveConfig(homeDir string, cfg config.Configuration) error {
 }
 
 // AddPeer adds a device to the config's device list and folder sharing.
-func AddPeer(cfg *config.Configuration, peerID protocol.DeviceID) {
-	// Add to device list if not already present.
-	for _, d := range cfg.Devices {
+// If the device is already present, its name is updated when name is non-empty.
+func AddPeer(cfg *config.Configuration, peerID protocol.DeviceID, name string) {
+	// Add to device list if not already present; update name if changed.
+	for i, d := range cfg.Devices {
 		if d.DeviceID == peerID {
+			if name != "" && cfg.Devices[i].Name != name {
+				cfg.Devices[i].Name = name
+			}
 			goto addToFolder
 		}
 	}
 	cfg.Devices = append(cfg.Devices, config.DeviceConfiguration{
 		DeviceID:  peerID,
+		Name:      name,
 		Addresses: []string{"dynamic"},
 	})
 
