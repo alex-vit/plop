@@ -297,23 +297,43 @@ func (s *statusService) computeSnapshot() StatusSnapshot {
 	}
 	snapshot.NeedTotalItems = needTotalItems
 
-	snapshot.ConnectedPeers, snapshot.TotalPeers = peerConnectionCounts(cfg.Devices, s.localID, s.runtime)
+	snapshot.Peers = buildPeerStatuses(cfg.Devices, s.localID, s.runtime)
+	snapshot.ConnectedPeers, snapshot.TotalPeers = countPeers(snapshot.Peers)
 	snapshot.State = deriveStatusState(folderState, needTotalItems, snapshot.ConnectedPeers, snapshot.TotalPeers)
 
 	return snapshot
 }
 
-func peerConnectionCounts(devices []config.DeviceConfiguration, localID protocol.DeviceID, runtime statusRuntime) (connected int, total int) {
+func buildPeerStatuses(devices []config.DeviceConfiguration, localID protocol.DeviceID, rt statusRuntime) []PeerStatus {
+	var peers []PeerStatus
 	for _, device := range devices {
 		if device.DeviceID == localID {
 			continue
 		}
-		total++
-		if runtime.IsConnectedTo(device.DeviceID) {
+		peers = append(peers, PeerStatus{
+			ShortID:   shortDeviceID(device.DeviceID),
+			Connected: rt.IsConnectedTo(device.DeviceID),
+		})
+	}
+	return peers
+}
+
+func countPeers(peers []PeerStatus) (connected, total int) {
+	total = len(peers)
+	for _, p := range peers {
+		if p.Connected {
 			connected++
 		}
 	}
-	return connected, total
+	return
+}
+
+func shortDeviceID(id protocol.DeviceID) string {
+	s := id.String()
+	if i := strings.Index(s, "-"); i > 0 {
+		return s[:i]
+	}
+	return s
 }
 
 func deriveStatusState(folderState string, needTotalItems, connectedPeers, totalPeers int) StatusState {
@@ -345,5 +365,18 @@ func snapshotEqualIgnoringUpdatedAt(a, b StatusSnapshot) bool {
 		a.NeedTotalItems == b.NeedTotalItems &&
 		a.ConnectedPeers == b.ConnectedPeers &&
 		a.TotalPeers == b.TotalPeers &&
-		a.Error == b.Error
+		a.Error == b.Error &&
+		peersEqual(a.Peers, b.Peers)
+}
+
+func peersEqual(a, b []PeerStatus) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

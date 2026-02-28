@@ -2,7 +2,6 @@ package tray
 
 import (
 	"encoding/xml"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -26,7 +25,9 @@ func Run(version, homeDir, deviceID string, statusUpdates <-chan engine.StatusSn
 func onReady(version, homeDir, deviceID string, statusUpdates <-chan engine.StatusSnapshot) {
 	setTrayIcon(icon.StatusLightSyncing)
 	systray.SetTooltip("plop")
-	systray.SetOnClick(func(menu systray.IMenu) { menu.ShowMenu() })
+	if runtime.GOOS != "windows" {
+		systray.SetOnClick(func(menu systray.IMenu) { menu.ShowMenu() })
+	}
 	systray.SetOnRClick(func(menu systray.IMenu) { menu.ShowMenu() })
 	if runtime.GOOS == "windows" || runtime.GOOS == "linux" {
 		systray.SetOnDClick(func(menu systray.IMenu) { openSyncFolder(homeDir) })
@@ -37,7 +38,19 @@ func onReady(version, homeDir, deviceID string, statusUpdates <-chan engine.Stat
 
 	mStatus := systray.AddMenuItem("Status: Starting...", "Current sync status")
 	mStatus.Disable()
-	stopStatusMonitor = startStatusMonitor(statusUpdates, mStatus)
+
+	// Pre-allocate peer slots immediately after the status item so they appear in-line.
+	// The status monitor shows/hides/updates them as snapshots arrive.
+	const maxPeerItems = 10
+	peerItems := make([]*systray.MenuItem, maxPeerItems)
+	for i := range peerItems {
+		item := systray.AddMenuItem("", "")
+		item.Disable()
+		item.Hide()
+		peerItems[i] = item
+	}
+
+	stopStatusMonitor = startStatusMonitor(statusUpdates, mStatus, peerItems)
 
 	systray.AddSeparator()
 
@@ -48,9 +61,6 @@ func onReady(version, homeDir, deviceID string, statusUpdates <-chan engine.Stat
 
 	mCopyID := systray.AddMenuItem("Copy My ID", "Copy this device's ID to clipboard")
 	mCopyID.Click(func() { copyToClipboard(deviceID) })
-
-	mPairAndroid := systray.AddMenuItem("Pair Android (Syncthing)...", "Copy your ID and open a pairing checklist")
-	mPairAndroid.Click(func() { openAndroidPairingGuide(homeDir, deviceID) })
 
 	mPeers := systray.AddMenuItem("Add or Edit Peers", "Open peers.txt in text editor")
 	mPeers.Click(func() { openInEditor(filepath.Join(homeDir, "peers.txt")) })
@@ -166,84 +176,3 @@ func openInEditor(path string) {
 	}
 }
 
-func openAndroidPairingGuide(homeDir, deviceID string) {
-	folderID, folderPath := loadPrimaryFolder(homeDir)
-	guidePath := filepath.Join(homeDir, "pair-android-syncthing.txt")
-
-	// Make pairing action useful immediately: ID is ready to paste on phone.
-	copyToClipboard(deviceID)
-
-	_ = os.WriteFile(guidePath, []byte(renderAndroidPairingGuide(deviceID, folderID, folderPath, filepath.Join(homeDir, "peers.txt"))), 0o644)
-	openInEditor(guidePath)
-}
-
-func loadPrimaryFolder(homeDir string) (string, string) {
-	folderID := "default"
-	folderPath := defaultSyncFolderPath()
-
-	data, err := os.ReadFile(filepath.Join(homeDir, "config.xml"))
-	if err != nil {
-		return folderID, folderPath
-	}
-
-	var cfg struct {
-		Folders []struct {
-			ID   string `xml:"id,attr"`
-			Path string `xml:"path,attr"`
-		} `xml:"folder"`
-	}
-	if err := xml.Unmarshal(data, &cfg); err != nil || len(cfg.Folders) == 0 {
-		return folderID, folderPath
-	}
-	if cfg.Folders[0].ID != "" {
-		folderID = cfg.Folders[0].ID
-	}
-	if cfg.Folders[0].Path != "" {
-		folderPath = cfg.Folders[0].Path
-	}
-	return folderID, folderPath
-}
-
-func defaultSyncFolderPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "plop"
-	}
-	return filepath.Join(home, "plop")
-}
-
-func renderAndroidPairingGuide(deviceID, folderID, folderPath, peersPath string) string {
-	return fmt.Sprintf(`Plop + Syncthing Android Pairing
-=================================
-
-Your plop device ID (already copied to clipboard):
-%s
-
-Plop shared folder:
-- Folder ID: %s
-- Folder path: %s
-
-On Android (Syncthing app):
-1. Find and copy your phone's Device ID:
-   Devices tab -> This Device (phone) -> copy Device ID.
-2. Add plop as a remote device:
-   Devices tab -> + -> Enter Device ID -> paste the plop ID above -> Save.
-3. Folder setup:
-   - If you already have a folder with ID "%s":
-     open it and share it with the plop device.
-   - If you do NOT have that folder ID:
-     Folders tab -> + -> create one with Folder ID "%s".
-4. Ensure folder type is Send & Receive.
-5. Choose any local folder path on phone.
-6. Accept share prompts on both devices.
-
-On this computer:
-1. Add the Android Device ID (step 1 above) to:
-   %s
-2. One device ID per line.
-
-Then verify:
-- In tray: Open Plop Folder.
-- Add a small test file and confirm it appears on Android.
-`, deviceID, folderID, folderPath, folderID, folderID, peersPath)
-}

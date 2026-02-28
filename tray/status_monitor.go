@@ -16,7 +16,7 @@ type trayStatus struct {
 	iconState icon.StatusLight
 }
 
-func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.MenuItem) func() {
+func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.MenuItem, peerItems []*systray.MenuItem) func() {
 	stop := make(chan struct{})
 	var once sync.Once
 
@@ -35,6 +35,21 @@ func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.Menu
 			current = next
 		}
 
+		applyPeers := func(peers []engine.PeerStatus) {
+			for i, slot := range peerItems {
+				if i < len(peers) {
+					icon := "○ "
+					if peers[i].Connected {
+						icon = "● "
+					}
+					slot.SetTitle(icon + peers[i].ShortID)
+					slot.Show()
+				} else {
+					slot.Hide()
+				}
+			}
+		}
+
 		apply(trayStatusFromSnapshot(engine.StatusSnapshot{State: engine.StatusStateStarting}))
 
 		for {
@@ -45,9 +60,11 @@ func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.Menu
 				if !ok {
 					updates = nil
 					apply(trayStatusFromSnapshot(engine.StatusSnapshot{State: engine.StatusStateUnavailable}))
+					applyPeers(nil)
 					continue
 				}
 				apply(trayStatusFromSnapshot(snapshot))
+				applyPeers(snapshot.Peers)
 			}
 		}
 	}()
