@@ -33,6 +33,8 @@ var rootCmd = &cobra.Command{
 			defer logFile.Close()
 		}
 
+		cleanOldBinary()
+
 		eng, err := engine.New(homeDir, "", nil)
 		if err != nil {
 			return fmt.Errorf("creating engine: %w", err)
@@ -59,6 +61,8 @@ var rootCmd = &cobra.Command{
 			eng.Wait()
 			systray.Quit()
 		}()
+
+		go autoUpdate()
 
 		tray.Run(Version, homeDir, eng.DeviceID().String(), eng.StatusUpdates())
 		return nil
