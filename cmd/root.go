@@ -7,9 +7,11 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/energye/systray"
 	"github.com/spf13/cobra"
+	stlogger "github.com/syncthing/syncthing/lib/logger"
 
 	"github.com/alex-vit/plop/engine"
 	"github.com/alex-vit/plop/paths"
@@ -85,11 +87,29 @@ func setupLogFile(homeDir string) *os.File {
 		log.Printf("failed to open log file: %v", err)
 		return nil
 	}
-	// Dup fd 1/2 so libraries that captured os.Stderr at init time
-	// (like Syncthing's logger) also write to the log file.
 	redirectFd(f)
 	log.SetOutput(f)
 	os.Stdout = f
 	os.Stderr = f
+
+	// Syncthing's DefaultLogger captures os.Stdout at package init time, so
+	// reassigning os.Stdout won't affect it. Hook in via AddHandler instead.
+	stlogger.DefaultLogger.AddHandler(stlogger.LevelInfo, func(level stlogger.LogLevel, msg string) {
+		var prefix string
+		switch level {
+		case stlogger.LevelDebug:
+			prefix = "DEBUG"
+		case stlogger.LevelVerbose:
+			prefix = "VERBOSE"
+		case stlogger.LevelInfo:
+			prefix = "INFO"
+		case stlogger.LevelWarn:
+			prefix = "WARNING"
+		default:
+			prefix = "INFO"
+		}
+		fmt.Fprintf(f, "%s %s: %s\n", time.Now().Format("2006/01/02 15:04:05"), prefix, msg)
+	})
+
 	return f
 }
