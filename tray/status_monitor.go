@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/alex-vit/plop/engine"
 	"github.com/alex-vit/plop/icon"
@@ -33,18 +34,22 @@ func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.Menu
 			current = next
 		}
 
-		applyPeers := func(peers []engine.PeerStatus) {
+		applyPeers := func(peers []engine.PeerStatus, state engine.StatusState) {
+			now := time.Now()
 			for i, slot := range peerItems {
 				if i < len(peers) {
-					indicator := "✗ "
-					if peers[i].Connected {
-						indicator = "✓ "
-					}
-					label := peers[i].Name
+					peer := peers[i]
+					label := peer.Name
 					if label == "" {
-						label = peers[i].ShortID
+						label = peer.ShortID
 					}
-					slot.SetTitle(indicator + label)
+					var status string
+					if peer.Connected {
+						status = peerConnectedLabel(state)
+					} else {
+						status = peerLastSeenLabel(peer.LastSeen, now)
+					}
+					slot.SetTitle(label + " - " + status)
 					slot.Show()
 				} else {
 					slot.Hide()
@@ -62,11 +67,11 @@ func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.Menu
 				if !ok {
 					updates = nil
 					apply(trayStatusFromSnapshot(engine.StatusSnapshot{State: engine.StatusStateUnavailable}))
-					applyPeers(nil)
+					applyPeers(nil, engine.StatusStateUnavailable)
 					continue
 				}
 				apply(trayStatusFromSnapshot(snapshot))
-				applyPeers(snapshot.Peers)
+				applyPeers(snapshot.Peers, snapshot.State)
 			}
 		}
 	}()
@@ -76,6 +81,36 @@ func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.Menu
 			close(stop)
 		})
 	}
+}
+
+func peerConnectedLabel(state engine.StatusState) string {
+	switch state {
+	case engine.StatusStateSynced:
+		return "synced"
+	case engine.StatusStateSyncing:
+		return "syncing"
+	case engine.StatusStateError:
+		return "error"
+	default:
+		return "online"
+	}
+}
+
+var epochTime = time.Unix(0, 0)
+
+func peerLastSeenLabel(t time.Time, now time.Time) string {
+	if t.IsZero() || !t.After(epochTime) {
+		return "offline"
+	}
+	ty, tm, td := t.Date()
+	ny, nm, nd := now.Date()
+	if ty == ny && tm == nm && td == nd {
+		return "last seen " + t.Format("3:04 PM")
+	}
+	if ty == ny {
+		return "last seen " + t.Format("Jan 2")
+	}
+	return "last seen " + t.Format("Jan 2, 2006")
 }
 
 func trayStatusFromSnapshot(snapshot engine.StatusSnapshot) trayStatus {

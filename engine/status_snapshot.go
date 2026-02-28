@@ -14,9 +14,10 @@ const (
 )
 
 type PeerStatus struct {
-	ShortID   string `json:"shortID"`
-	Name      string `json:"name,omitempty"`
-	Connected bool   `json:"connected"`
+	ShortID   string    `json:"shortID"`
+	Name      string    `json:"name,omitempty"`
+	Connected bool      `json:"connected"`
+	LastSeen  time.Time `json:"lastSeen,omitempty"`
 }
 
 type StatusSnapshot struct {

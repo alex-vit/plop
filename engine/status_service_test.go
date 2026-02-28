@@ -187,6 +187,10 @@ func (f *fakeStatusRuntime) IsConnectedTo(deviceID protocol.DeviceID) bool {
 	return f.connected[deviceID]
 }
 
+func (f *fakeStatusRuntime) DeviceLastSeen(_ protocol.DeviceID) time.Time {
+	return time.Time{}
+}
+
 func (f *fakeStatusRuntime) setNeedTotalItems(need int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

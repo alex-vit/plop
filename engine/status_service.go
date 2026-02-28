@@ -34,6 +34,7 @@ type statusRuntime interface {
 	FolderState(folderID string) (string, error)
 	NeedTotalItems(folderID string) (int, error)
 	IsConnectedTo(deviceID protocol.DeviceID) bool
+	DeviceLastSeen(deviceID protocol.DeviceID) time.Time
 }
 
 type statusEventSubscription interface {
@@ -94,6 +95,20 @@ func (r *syncthingStatusRuntime) IsConnectedTo(deviceID protocol.DeviceID) bool 
 		return false
 	}
 	return r.internals.IsConnectedTo(deviceID)
+}
+
+func (r *syncthingStatusRuntime) DeviceLastSeen(deviceID protocol.DeviceID) time.Time {
+	if r.internals == nil {
+		return time.Time{}
+	}
+	stats, err := r.internals.DeviceStatistics()
+	if err != nil {
+		return time.Time{}
+	}
+	if s, ok := stats[deviceID]; ok {
+		return s.LastSeen
+	}
+	return time.Time{}
 }
 
 type statusService struct {
@@ -315,6 +330,7 @@ func buildPeerStatuses(devices []config.DeviceConfiguration, localID protocol.De
 			ShortID:   shortDeviceID(device.DeviceID),
 			Name:      device.Name,
 			Connected: rt.IsConnectedTo(device.DeviceID),
+			LastSeen:  rt.DeviceLastSeen(device.DeviceID),
 		})
 	}
 	sort.Slice(peers, func(i, j int) bool {
