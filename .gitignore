@@ -35,3 +35,6 @@ plop
 
 # Local build output
 out/
+
+# Claude Code
+.claude/
