@@ -81,13 +81,11 @@ func (r *syncthingStatusRuntime) NeedTotalItems(folderID string) (int, error) {
 	if r.internals == nil {
 		return 0, errInternalsUnavailable
 	}
-	snap, err := r.internals.DBSnapshot(folderID)
+	counts, err := r.internals.NeedSize(folderID, protocol.LocalDeviceID)
 	if err != nil {
 		return 0, err
 	}
-	defer snap.Release()
-
-	return snap.NeedSize(protocol.LocalDeviceID).TotalItems(), nil
+	return counts.TotalItems(), nil
 }
 
 func (r *syncthingStatusRuntime) IsConnectedTo(deviceID protocol.DeviceID) bool {

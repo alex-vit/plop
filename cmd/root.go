@@ -3,15 +3,14 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"github.com/energye/systray"
 	"github.com/spf13/cobra"
-	stlogger "github.com/syncthing/syncthing/lib/logger"
 
 	"github.com/alex-vit/plop/engine"
 	"github.com/alex-vit/plop/paths"
@@ -96,24 +95,15 @@ func setupLogFile(homeDir string) *os.File {
 	os.Stdout = f
 	os.Stderr = f
 
-	// Syncthing's DefaultLogger captures os.Stdout at package init time, so
-	// reassigning os.Stdout won't affect it. Hook in via AddHandler instead.
-	stlogger.DefaultLogger.AddHandler(stlogger.LevelInfo, func(level stlogger.LogLevel, msg string) {
-		var prefix string
-		switch level {
-		case stlogger.LevelDebug:
-			prefix = "DEBUG"
-		case stlogger.LevelVerbose:
-			prefix = "VERBOSE"
-		case stlogger.LevelInfo:
-			prefix = "INFO"
-		case stlogger.LevelWarn:
-			prefix = "WARNING"
-		default:
-			prefix = "INFO"
-		}
-		fmt.Fprintf(f, "%s %s: %s\n", time.Now().Format("2006/01/02 15:04:05"), prefix, msg)
-	})
+	// Syncthing v2 uses log/slog. Set a global handler that writes to the
+	// log file with a format matching the old Syncthing log output.
+	slog.SetDefault(slog.New(slog.NewTextHandler(f, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})))
+
+	// Also set slog as the default logger backend so log.Printf goes to the
+	// same destination with consistent formatting.
+	slog.SetLogLoggerLevel(slog.LevelInfo)
 
 	return f
 }

@@ -11,7 +11,6 @@ import (
 
 	"github.com/syncthing/notify"
 	"github.com/syncthing/syncthing/lib/config"
-	"github.com/syncthing/syncthing/lib/db/backend"
 	"github.com/syncthing/syncthing/lib/events"
 	"github.com/syncthing/syncthing/lib/protocol"
 	"github.com/syncthing/syncthing/lib/svcutil"
@@ -124,7 +123,7 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 	earlyServiceDone := earlyService.ServeBackground(ctx)
 	earlyService.Add(evLogger)
 
-	cfgWrapper, err := syncthing.LoadConfigAtStartup(cfgPath, cert, evLogger, false, true, false)
+	cfgWrapper, err := syncthing.LoadConfigAtStartup(cfgPath, cert, evLogger, false, false)
 	if err != nil {
 		cancel()
 		return nil, err
@@ -132,7 +131,7 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 	earlyService.Add(cfgWrapper)
 
 	dbPath := filepath.Join(homeDir, "db")
-	db, err := backend.Open(dbPath, backend.TuningAuto)
+	db, err := syncthing.OpenDatabase(dbPath, 0)
 	if err != nil {
 		cancel()
 		return nil, err

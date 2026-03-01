@@ -10,7 +10,7 @@ import (
 
 // GenerateCert creates a new TLS certificate and writes it to disk.
 func GenerateCert(certFile, keyFile string) (tls.Certificate, error) {
-	return tlsutil.NewCertificate(certFile, keyFile, "syncthing", 365*20)
+	return tlsutil.NewCertificate(certFile, keyFile, "syncthing", 365*20, false)
 }
 
 // LoadOrGenerateCert loads an existing TLS certificate or generates a new one
