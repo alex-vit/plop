@@ -25,10 +25,10 @@ func Run(version, homeDir, deviceID string, statusUpdates <-chan engine.StatusSn
 func onReady(version, homeDir, deviceID string, statusUpdates <-chan engine.StatusSnapshot) {
 	setTrayIcon(icon.StatusLightSyncing)
 	systray.SetTooltip("plop")
-	if runtime.GOOS != "windows" {
-		systray.SetOnClick(func(menu systray.IMenu) { menu.ShowMenu() })
+	if runtime.GOOS != "windows" { //nolint:goconst
+		systray.SetOnClick(func(menu systray.IMenu) { _ = menu.ShowMenu() })
 	}
-	systray.SetOnRClick(func(menu systray.IMenu) { menu.ShowMenu() })
+	systray.SetOnRClick(func(menu systray.IMenu) { _ = menu.ShowMenu() })
 	if runtime.GOOS == "windows" || runtime.GOOS == "linux" {
 		systray.SetOnDClick(func(menu systray.IMenu) { openSyncFolder(homeDir) })
 	}
@@ -90,7 +90,7 @@ func onExit() {
 
 func setTrayIcon(state icon.StatusLight) {
 	pngData, icoData := icon.BytesForStatusLight(state)
-	if runtime.GOOS == "darwin" {
+	if runtime.GOOS == "darwin" { //nolint:goconst
 		systray.SetIcon(pngData)
 		return
 	}
@@ -140,11 +140,11 @@ func openSyncFolder(homeDir string) {
 func openPath(path string) {
 	switch runtime.GOOS {
 	case "darwin":
-		exec.Command("open", path).Start()
+		_ = exec.Command("open", path).Start() //nolint:noctx
 	case "windows":
-		exec.Command("explorer", path).Start()
+		_ = exec.Command("explorer", path).Start() //nolint:noctx
 	default:
-		exec.Command("xdg-open", path).Start()
+		_ = exec.Command("xdg-open", path).Start() //nolint:noctx
 	}
 }
 
@@ -152,24 +152,23 @@ func copyToClipboard(text string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.Command("pbcopy")
+		cmd = exec.Command("pbcopy") //nolint:noctx
 	case "windows":
-		cmd = exec.Command("cmd", "/c", "clip")
+		cmd = exec.Command("cmd", "/c", "clip") //nolint:noctx
 	default:
-		cmd = exec.Command("xclip", "-selection", "clipboard")
+		cmd = exec.Command("xclip", "-selection", "clipboard") //nolint:noctx
 	}
 	cmd.Stdin = strings.NewReader(text)
-	cmd.Run()
+	_ = cmd.Run()
 }
 
 func openInEditor(path string) {
 	switch runtime.GOOS {
 	case "darwin":
-		exec.Command("open", "-t", path).Start()
+		_ = exec.Command("open", "-t", path).Start() //nolint:noctx
 	case "windows":
-		exec.Command("notepad", path).Start()
+		_ = exec.Command("notepad", path).Start() //nolint:noctx
 	default:
-		exec.Command("xdg-open", path).Start()
+		_ = exec.Command("xdg-open", path).Start() //nolint:noctx
 	}
 }
-

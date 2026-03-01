@@ -76,7 +76,7 @@ func ensureRuntimeGUIAddress(cfg *config.Configuration) error {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		// Non-TCP forms (for example UNIX sockets) are left unchanged.
-		return nil
+		return err
 	}
 	if port != "0" {
 		return nil
@@ -95,11 +95,11 @@ func ensureRuntimeGUIAddress(cfg *config.Configuration) error {
 }
 
 func pickFreeAddress(host string) (string, error) {
-	ln, err := net.Listen("tcp", net.JoinHostPort(host, "0"))
+	ln, err := net.Listen("tcp", net.JoinHostPort(host, "0")) //nolint:noctx
 	if err != nil {
 		return "", fmt.Errorf("allocating GUI listener on %s: %w", host, err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	_, port, err := net.SplitHostPort(ln.Addr().String())
 	if err != nil {
@@ -122,7 +122,7 @@ func SaveConfig(homeDir string, cfg config.Configuration) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	return cfg.WriteXML(f)
 }
 
@@ -170,10 +170,9 @@ func RemovePeer(cfg *config.Configuration, peerID protocol.DeviceID) {
 
 	// Remove from folder device lists.
 	for fi := range cfg.Folders {
-		devs := cfg.Folders[fi].Devices
-		for i, fd := range devs {
+		for i, fd := range cfg.Folders[fi].Devices {
 			if fd.DeviceID == peerID {
-				cfg.Folders[fi].Devices = append(devs[:i], devs[i+1:]...)
+				cfg.Folders[fi].Devices = append(cfg.Folders[fi].Devices[:i], cfg.Folders[fi].Devices[i+1:]...)
 				break
 			}
 		}
@@ -187,7 +186,7 @@ func writeDefaultStignore(folderPath string) {
 	if _, err := os.Stat(p); err == nil {
 		return
 	}
-	os.WriteFile(p, []byte("// OS junk\n.DS_Store\nThumbs.db\ndesktop.ini\n"), 0o644)
+	_ = os.WriteFile(p, []byte("// OS junk\n.DS_Store\nThumbs.db\ndesktop.ini\n"), 0o644)
 }
 
 func generateAPIKey() string {

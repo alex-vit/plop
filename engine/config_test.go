@@ -11,7 +11,7 @@ import (
 func TestEnsureRuntimeGUIAddressAssignsPort(t *testing.T) {
 	cfg := stconfig.Configuration{}
 	cfg.GUI.Enabled = true
-	cfg.GUI.RawAddress = "127.0.0.1:0"
+	cfg.GUI.RawAddress = "127.0.0.1:0" //nolint:goconst
 
 	if err := ensureRuntimeGUIAddress(&cfg); err != nil {
 		t.Fatalf("ensureRuntimeGUIAddress: %v", err)
@@ -21,7 +21,7 @@ func TestEnsureRuntimeGUIAddressAssignsPort(t *testing.T) {
 	if err != nil {
 		t.Fatalf("split host/port: %v", err)
 	}
-	if host != "127.0.0.1" {
+	if host != "127.0.0.1" { //nolint:goconst
 		t.Fatalf("host = %q, want 127.0.0.1", host)
 	}
 	portNum, err := strconv.Atoi(port)

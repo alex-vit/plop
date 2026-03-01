@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	kernel32        = syscall.NewLazyDLL("kernel32.dll")
-	setStdHandle    = kernel32.NewProc("SetStdHandle")
-	createMutexW    = kernel32.NewProc("CreateMutexW")
+	kernel32     = syscall.NewLazyDLL("kernel32.dll")
+	setStdHandle = kernel32.NewProc("SetStdHandle")
+	createMutexW = kernel32.NewProc("CreateMutexW")
 )
 
 const (
@@ -23,11 +23,11 @@ func init() {
 	// Create a named mutex so the Inno Setup installer (AppMutex=PlopMutex)
 	// can detect and close a running instance before overwriting the binary.
 	name, _ := syscall.UTF16PtrFromString("PlopMutex")
-	createMutexW.Call(0, 1, uintptr(unsafe.Pointer(name)))
+	createMutexW.Call(0, 1, uintptr(unsafe.Pointer(name))) //nolint:errcheck
 }
 
 func redirectFd(f *os.File) {
-	handle := uintptr(f.Fd())
-	setStdHandle.Call(stdOutputHandle, handle)
-	setStdHandle.Call(stdErrorHandle, handle)
+	handle := f.Fd()
+	setStdHandle.Call(stdOutputHandle, handle) //nolint:errcheck
+	setStdHandle.Call(stdErrorHandle, handle)  //nolint:errcheck
 }

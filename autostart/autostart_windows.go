@@ -24,7 +24,7 @@ func IsEnabled(_ string) bool {
 	if err != nil {
 		return false
 	}
-	defer k.Close()
+	defer func() { _ = k.Close() }()
 	_, _, err = k.GetStringValue(registryName)
 	return err == nil
 }
@@ -38,7 +38,7 @@ func Enable(homeDir string) error {
 	if err != nil {
 		return err
 	}
-	defer k.Close()
+	defer func() { _ = k.Close() }()
 	return k.SetStringValue(registryName, runKeyValue(exePath, cleanHomeDir(homeDir)))
 }
 
@@ -50,7 +50,7 @@ func Disable(_ string) error {
 		}
 		return err
 	}
-	defer k.Close()
+	defer func() { _ = k.Close() }()
 	err = k.DeleteValue(registryName)
 	if errors.Is(err, registry.ErrNotExist) {
 		return nil

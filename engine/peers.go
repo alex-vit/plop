@@ -30,7 +30,7 @@ func ParsePeersFile(path string) ([]PeerEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var entries []PeerEntry
 	var pendingName string
@@ -70,7 +70,7 @@ func WritePeersFile(path string, peers []PeerEntry) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	w := bufio.NewWriter(f)
 	for _, p := range peers {
@@ -93,7 +93,7 @@ func AppendPeersFile(path string, id protocol.DeviceID) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, err = f.WriteString(id.String() + "\n")
 	return err
 }

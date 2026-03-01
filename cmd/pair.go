@@ -96,12 +96,13 @@ func printSyncthingGuide(gotPeerArg, addedPeer bool) {
 	fmt.Printf("  plop folder:    %s\n", folderPath)
 	fmt.Println()
 
-	if !gotPeerArg {
+	switch {
+	case !gotPeerArg:
 		fmt.Println("1) Add the Syncthing device to plop:")
 		fmt.Println("   plop pair SYNCTHING_DEVICE_ID")
-	} else if addedPeer {
+	case addedPeer:
 		fmt.Println("1) Syncthing device ID was added to peers.txt.")
-	} else {
+	default:
 		fmt.Println("1) Syncthing device ID is already present in peers.txt.")
 	}
 

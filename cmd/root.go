@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logFile := setupLogFile(homeDir)
 		if logFile != nil {
-			defer logFile.Close()
+			defer func() { _ = logFile.Close() }()
 		}
 
 		cleanOldBinary()
@@ -83,7 +83,7 @@ func init() {
 // setupLogFile redirects log output and stdout/stderr to log.txt in the
 // config directory. Used in GUI mode where there's no terminal to see output.
 func setupLogFile(homeDir string) *os.File {
-	os.MkdirAll(homeDir, 0o700)
+	_ = os.MkdirAll(homeDir, 0o700)
 	logPath := filepath.Join(homeDir, "log.txt")
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {

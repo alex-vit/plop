@@ -71,7 +71,7 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 	// Ensure peers.txt exists so "Open Settings" always has a file to open.
 	peersFile := filepath.Join(homeDir, "peers.txt")
 	if _, err := os.Stat(peersFile); os.IsNotExist(err) {
-		os.WriteFile(peersFile, []byte("# Add one device ID per line.\n# Optionally add a friendly name after the ID or as a comment above it:\n# XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX Mom's iPad\n# # Mom's iPad\n# XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX\n"), 0o644)
+		_ = os.WriteFile(peersFile, []byte("# Add one device ID per line.\n# Optionally add a friendly name after the ID or as a comment above it:\n# XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX Mom's iPad\n# # Mom's iPad\n# XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX\n"), 0o644)
 	}
 
 	// Collect all desired peers from peers.txt.
@@ -82,7 +82,7 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 	var cfg config.Configuration
 	if f, err := os.Open(cfgPath); err == nil {
 		cfg, _, err = config.ReadXML(f, myID)
-		f.Close()
+		_ = f.Close()
 		if err != nil {
 			return nil, err
 		}
@@ -108,8 +108,8 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 
 	// Ensure sync folders, .stfolder marker, and .stignore exist.
 	for _, folder := range cfg.Folders {
-		os.MkdirAll(folder.Path, 0o755)
-		os.MkdirAll(filepath.Join(folder.Path, ".stfolder"), 0o755)
+		_ = os.MkdirAll(folder.Path, 0o755)
+		_ = os.MkdirAll(filepath.Join(folder.Path, ".stfolder"), 0o755)
 		writeDefaultStignore(folder.Path)
 	}
 
@@ -141,7 +141,7 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 		NoUpgrade: true,
 	})
 	if err != nil {
-		db.Close()
+		_ = db.Close()
 		cancel()
 		return nil, err
 	}

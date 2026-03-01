@@ -37,8 +37,8 @@ func TestApplyUpdate(t *testing.T) {
 	exe := filepath.Join(dir, "plop.exe")
 	tmp := exe + ".tmp"
 
-	os.WriteFile(exe, []byte("old"), 0o755)
-	os.WriteFile(tmp, []byte("new"), 0o755)
+	_ = os.WriteFile(exe, []byte("old"), 0o755) //nolint:errcheck
+	_ = os.WriteFile(tmp, []byte("new"), 0o755) //nolint:errcheck
 
 	old := exe + ".old"
 
@@ -46,7 +46,7 @@ func TestApplyUpdate(t *testing.T) {
 		t.Fatalf("rename exe to old: %v", err)
 	}
 	if err := os.Rename(tmp, exe); err != nil {
-		os.Rename(old, exe)
+		_ = os.Rename(old, exe) //nolint:errcheck
 		t.Fatalf("rename tmp to exe: %v", err)
 	}
 
@@ -69,7 +69,7 @@ func TestApplyUpdateRollback(t *testing.T) {
 	dir := t.TempDir()
 	exe := filepath.Join(dir, "plop.exe")
 
-	os.WriteFile(exe, []byte("old"), 0o755)
+	_ = os.WriteFile(exe, []byte("old"), 0o755) //nolint:errcheck
 
 	old := exe + ".old"
 	tmp := exe + ".tmp"
@@ -79,7 +79,7 @@ func TestApplyUpdateRollback(t *testing.T) {
 	}
 	if err := os.Rename(tmp, exe); err != nil {
 		// Rollback.
-		os.Rename(old, exe)
+		_ = os.Rename(old, exe) //nolint:errcheck
 	}
 
 	got, _ := os.ReadFile(exe)

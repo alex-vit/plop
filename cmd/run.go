@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/signal"
@@ -42,7 +43,7 @@ var runCmd = &cobra.Command{
 				return fmt.Errorf("config dir: %w", err)
 			}
 			hash := sha256.Sum256([]byte(abs))
-			home = filepath.Join(configDir, "instances", fmt.Sprintf("%x", hash[:4]))
+			home = filepath.Join(configDir, "instances", hex.EncodeToString(hash[:4]))
 		}
 
 		var peers []protocol.DeviceID
