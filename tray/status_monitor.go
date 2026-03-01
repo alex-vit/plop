@@ -24,9 +24,8 @@ func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.Menu
 		current := trayStatus{}
 		apply := func(next trayStatus) {
 			if next.label != current.label {
-				display := "Plop " + version + next.label[len("Plop"):]
-				item.SetTitle(display)
-				systray.SetTooltip(display)
+				item.SetTitle("Plop " + version + next.label[len("Plop"):])
+				systray.SetTooltip(next.label)
 			}
 			if next.iconState != current.iconState {
 				setTrayIcon(next.iconState)
