@@ -18,7 +18,6 @@ SetupIconFile=icon\icon.ico
 UninstallDisplayIcon={app}\plop.exe
 Compression=lzma2
 SolidCompression=yes
-AppMutex=PlopMutex
 CloseApplications=yes
 WizardStyle=modern
 
