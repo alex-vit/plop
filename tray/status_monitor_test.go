@@ -1,6 +1,7 @@
 package tray
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/alex-vit/plop/engine"
@@ -75,6 +76,89 @@ func TestTrayStatusFromSnapshot(t *testing.T) {
 			got := trayStatusFromSnapshot(tc.snapshot)
 			if got != tc.want {
 				t.Fatalf("trayStatusFromSnapshot() =\n  %+v\nwant\n  %+v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestPeerStatusLabel(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		peer engine.PeerStatus
+		want string
+	}{
+		{
+			name: "connected no need is Up to Date",
+			peer: engine.PeerStatus{Connected: true, NeedBytes: 0},
+			want: "Up to Date",
+		},
+		{
+			name: "connected with need is Syncing",
+			peer: engine.PeerStatus{Connected: true, NeedBytes: 1024},
+			want: "Syncing",
+		},
+		{
+			name: "disconnected no need",
+			peer: engine.PeerStatus{Connected: false, NeedBytes: 0},
+			want: "Disconnected",
+		},
+		{
+			name: "disconnected with KB pending",
+			peer: engine.PeerStatus{Connected: false, NeedBytes: 500 * 1024},
+			want: "Disconnected (500 KB pending)",
+		},
+		{
+			name: "disconnected with MB pending",
+			peer: engine.PeerStatus{Connected: false, NeedBytes: 42 * 1024 * 1024},
+			want: "Disconnected (42 MB pending)",
+		},
+		{
+			name: "disconnected with GB pending",
+			peer: engine.PeerStatus{Connected: false, NeedBytes: 3 * 1024 * 1024 * 1024},
+			want: "Disconnected (3.0 GB pending)",
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := peerStatusLabel(tc.peer)
+			if got != tc.want {
+				t.Fatalf("peerStatusLabel() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestFormatBytes(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		bytes int64
+		want  string
+	}{
+		{0, "1 KB"},
+		{512, "1 KB"},
+		{1024, "1 KB"},
+		{50 * 1024, "50 KB"},
+		{1024 * 1024, "1 MB"},
+		{150 * 1024 * 1024, "150 MB"},
+		{1024 * 1024 * 1024, "1.0 GB"},
+		{int64(2.5 * 1024 * 1024 * 1024), "2.5 GB"},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(fmt.Sprintf("%d", tc.bytes), func(t *testing.T) {
+			t.Parallel()
+
+			got := formatBytes(tc.bytes)
+			if got != tc.want {
+				t.Fatalf("formatBytes(%d) = %q, want %q", tc.bytes, got, tc.want)
 			}
 		})
 	}

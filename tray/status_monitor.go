@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/alex-vit/plop/engine"
 	"github.com/alex-vit/plop/icon"
@@ -33,8 +32,7 @@ func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.Menu
 			current = next
 		}
 
-		applyPeers := func(peers []engine.PeerStatus, state engine.StatusState) {
-			now := time.Now()
+		applyPeers := func(peers []engine.PeerStatus) {
 			for i, slot := range peerItems {
 				if i < len(peers) {
 					peer := peers[i]
@@ -42,13 +40,7 @@ func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.Menu
 					if label == "" {
 						label = peer.ShortID
 					}
-					var status string
-					if peer.Connected {
-						status = peerConnectedLabel(state)
-					} else {
-						status = peerLastSeenLabel(peer.LastSeen, now)
-					}
-					slot.SetTitle(label + " - " + status)
+					slot.SetTitle(label + " - " + peerStatusLabel(peer))
 					slot.Show()
 				} else {
 					slot.Hide()
@@ -66,11 +58,11 @@ func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.Menu
 				if !ok {
 					updates = nil
 					apply(trayStatusFromSnapshot(engine.StatusSnapshot{State: engine.StatusStateUnavailable}))
-					applyPeers(nil, engine.StatusStateUnavailable)
+					applyPeers(nil)
 					continue
 				}
 				apply(trayStatusFromSnapshot(snapshot))
-				applyPeers(snapshot.Peers, snapshot.State)
+				applyPeers(snapshot.Peers)
 			}
 		}
 	}()
@@ -82,34 +74,33 @@ func startStatusMonitor(updates <-chan engine.StatusSnapshot, item *systray.Menu
 	}
 }
 
-func peerConnectedLabel(state engine.StatusState) string {
-	switch state {
-	case engine.StatusStateSynced:
-		return "synced"
-	case engine.StatusStateSyncing:
-		return "syncing"
-	case engine.StatusStateError:
-		return "error"
-	default:
-		return "online"
+func peerStatusLabel(peer engine.PeerStatus) string {
+	if peer.Connected {
+		if peer.NeedBytes > 0 {
+			return "Syncing"
+		}
+		return "Up to Date"
 	}
+	if peer.NeedBytes > 0 {
+		return fmt.Sprintf("Disconnected (%s pending)", formatBytes(peer.NeedBytes))
+	}
+	return "Disconnected"
 }
 
-var epochTime = time.Unix(0, 0)
-
-func peerLastSeenLabel(t time.Time, now time.Time) string {
-	if t.IsZero() || !t.After(epochTime) {
-		return "offline"
+func formatBytes(b int64) string {
+	const (
+		kB = 1024
+		mB = kB * 1024
+		gB = mB * 1024
+	)
+	switch {
+	case b >= gB:
+		return fmt.Sprintf("%.1f GB", float64(b)/float64(gB))
+	case b >= mB:
+		return fmt.Sprintf("%d MB", b/mB)
+	default:
+		return fmt.Sprintf("%d KB", max(b/kB, 1))
 	}
-	ty, tm, td := t.Date()
-	ny, nm, nd := now.Date()
-	if ty == ny && tm == nm && td == nd {
-		return "last seen " + t.Format("3:04 PM")
-	}
-	if ty == ny {
-		return "last seen " + t.Format("Jan 2")
-	}
-	return "last seen " + t.Format("Jan 2, 2006")
 }
 
 func trayStatusFromSnapshot(snapshot engine.StatusSnapshot) trayStatus {

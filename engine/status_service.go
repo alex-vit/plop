@@ -35,6 +35,7 @@ type statusRuntime interface {
 	NeedTotalItems(folderID string) (int, error)
 	IsConnectedTo(deviceID protocol.DeviceID) bool
 	DeviceLastSeen(deviceID protocol.DeviceID) time.Time
+	DeviceNeedBytes(folderID string, deviceID protocol.DeviceID) int64
 }
 
 type statusEventSubscription interface {
@@ -107,6 +108,17 @@ func (r *syncthingStatusRuntime) DeviceLastSeen(deviceID protocol.DeviceID) time
 		return s.LastSeen
 	}
 	return time.Time{}
+}
+
+func (r *syncthingStatusRuntime) DeviceNeedBytes(folderID string, deviceID protocol.DeviceID) int64 {
+	if r.internals == nil {
+		return 0
+	}
+	counts, err := r.internals.NeedSize(folderID, deviceID)
+	if err != nil {
+		return 0
+	}
+	return counts.Bytes
 }
 
 type statusService struct {
@@ -311,14 +323,14 @@ func (s *statusService) computeSnapshot() StatusSnapshot {
 	}
 	snapshot.NeedTotalItems = needTotalItems
 
-	snapshot.Peers = buildPeerStatuses(cfg.Devices, s.localID, s.runtime)
+	snapshot.Peers = buildPeerStatuses(cfg.Devices, s.localID, folderID, s.runtime)
 	snapshot.ConnectedPeers, snapshot.TotalPeers = countPeers(snapshot.Peers)
 	snapshot.State = deriveStatusState(folderState, needTotalItems, snapshot.ConnectedPeers, snapshot.TotalPeers)
 
 	return snapshot
 }
 
-func buildPeerStatuses(devices []config.DeviceConfiguration, localID protocol.DeviceID, rt statusRuntime) []PeerStatus {
+func buildPeerStatuses(devices []config.DeviceConfiguration, localID protocol.DeviceID, folderID string, rt statusRuntime) []PeerStatus {
 	var peers []PeerStatus
 	for _, device := range devices {
 		if device.DeviceID == localID {
@@ -328,6 +340,7 @@ func buildPeerStatuses(devices []config.DeviceConfiguration, localID protocol.De
 			ShortID:   shortDeviceID(device.DeviceID),
 			Name:      device.Name,
 			Connected: rt.IsConnectedTo(device.DeviceID),
+			NeedBytes: rt.DeviceNeedBytes(folderID, device.DeviceID),
 			LastSeen:  rt.DeviceLastSeen(device.DeviceID),
 		})
 	}

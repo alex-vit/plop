@@ -17,6 +17,7 @@ type PeerStatus struct {
 	ShortID   string    `json:"shortID"`
 	Name      string    `json:"name,omitempty"`
 	Connected bool      `json:"connected"`
+	NeedBytes int64     `json:"needBytes"`
 	LastSeen  time.Time `json:"lastSeen,omitempty"`
 }
 

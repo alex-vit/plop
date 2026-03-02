@@ -1,12 +1,13 @@
 ---
 title: Peer Status in Tray Menu
 created: 2026-02-26
-updated: 2026-02-28
+updated: 2026-03-02
 tags: [tray, ux, peers]
 status: implemented
 sections:
   - Peer names from peers.txt
   - ✓/✗ connection indicators
+  - Syncthing-style per-peer status labels
 ---
 
 # Peer Status in Tray Menu
@@ -53,8 +54,29 @@ through `PeerStatus.Name`. The tray falls back to `ShortID` when `Name` is empty
 
 `syncPeersConfig` updates the name in config whenever peers.txt changes (live reload).
 
+## Per-Peer Status Labels (2026-03-02)
+
+Replaced the old `synced`/`syncing`/`online`/`offline`/`last seen ...` labels with
+Syncthing-style statuses using per-device `NeedSize()` data:
+
+```
+✓ Mac - Up to Date
+✓ Poco - Syncing
+✗ Poco - Disconnected
+✗ Poco - Disconnected (42 MB pending)
+```
+
+**How it works:** `NeedSize(folderID, deviceID)` returns what a remote device still needs
+(queried from local DB, works even when disconnected). `NeedBytes > 0` → Syncing or pending;
+`NeedBytes == 0` → Up to Date or plain Disconnected.
+
+**Byte formatting:** KB (min 1) / MB / X.X GB — binary 1024-based, no decimals below GB.
+
+**Reference:** Modeled after Syncthing Android app (`DevicesAdapter.java`) and web GUI
+(`syncthingController.js`). Android shows "Up to Date" / "Syncing (X%)" / "Disconnected".
+Web GUI adds per-device `needBytes` from `/rest/db/completion`. We use `NeedSize` which
+provides the same data from the Go internals.
+
 ## Open / Future Ideas
 
-- Last-seen text for offline peers: "Last seen 2h ago"
-- Per-peer sync state (synced vs syncing vs error) — needs Syncthing per-device folder state
 - Clickable peer items (open shared folder, copy peer ID)

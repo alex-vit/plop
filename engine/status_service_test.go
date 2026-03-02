@@ -191,6 +191,10 @@ func (f *fakeStatusRuntime) DeviceLastSeen(_ protocol.DeviceID) time.Time {
 	return time.Time{}
 }
 
+func (f *fakeStatusRuntime) DeviceNeedBytes(_ string, _ protocol.DeviceID) int64 {
+	return 0
+}
+
 func (f *fakeStatusRuntime) setNeedTotalItems(need int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
