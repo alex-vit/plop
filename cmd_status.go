@@ -1,9 +1,10 @@
-package cmd
+package main
 
 import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/alex-vit/plop/engine"
-	"github.com/spf13/cobra"
 	"github.com/syncthing/syncthing/lib/config"
 )
 
@@ -19,26 +19,26 @@ const internalStatusMaxAge = 15 * time.Second
 
 var errInternalStatusStale = errors.New("internal status is stale")
 
-func init() {
-	rootCmd.AddCommand(statusCmd)
-}
+func runStatus(args []string) error {
+	fs := flag.NewFlagSet("plop status", flag.ContinueOnError)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return fmt.Errorf("status takes no arguments")
+	}
 
-var statusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Show sync status",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, err := readStatusConfig(homeDir)
-		if err != nil {
-			return err
-		}
+	cfg, err := readStatusConfig(homeDir)
+	if err != nil {
+		return err
+	}
 
-		snapshot, err := readInternalStatus(homeDir, time.Now())
-		if err != nil {
-			return fmt.Errorf("reading internal status (is 'plop run' active?): %w", err)
-		}
-		printInternalStatus(snapshot, cfg)
-		return nil
-	},
+	snapshot, err := readInternalStatus(homeDir, time.Now())
+	if err != nil {
+		return fmt.Errorf("reading internal status (is 'plop run' active?): %w", err)
+	}
+	printInternalStatus(snapshot, cfg)
+	return nil
 }
 
 func readStatusConfig(homeDir string) (config.Configuration, error) {

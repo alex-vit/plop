@@ -1,61 +1,53 @@
-package cmd
+package main
 
 import (
 	"crypto/tls"
 	"encoding/xml"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/spf13/cobra"
 	stconfig "github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/protocol"
 
 	"github.com/alex-vit/plop/engine"
 )
 
-var pairSyncthing bool
+func runPair(args []string) error {
+	fs := flag.NewFlagSet("plop pair", flag.ContinueOnError)
+	pairSyncthing := fs.Bool("syncthing", false, "print setup guidance for Syncthing (optionally also add a peer ID)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
 
-func init() {
-	pairCmd.Flags().BoolVar(&pairSyncthing, "syncthing", false, "print setup guidance for Syncthing (optionally also add a peer ID)")
-	rootCmd.AddCommand(pairCmd)
-}
+	if *pairSyncthing {
+		if fs.NArg() > 1 {
+			return fmt.Errorf("pair --syncthing accepts at most 1 argument")
+		}
+	} else {
+		if fs.NArg() != 1 {
+			return fmt.Errorf("usage: plop pair <device-id>")
+		}
+	}
 
-var pairCmd = &cobra.Command{
-	Use:   "pair [device-id]",
-	Short: "Add a peer device",
-	Long:  "Add a peer device ID to peers.txt. Use --syncthing for a guided setup flow with Syncthing Android/Desktop.",
-	Example: strings.TrimSpace(`
-plop pair SYNCTHING_DEVICE_ID
-plop pair --syncthing
-plop pair --syncthing SYNCTHING_DEVICE_ID
-`),
-	Args: func(cmd *cobra.Command, args []string) error {
-		if pairSyncthing {
-			return cobra.MaximumNArgs(1)(cmd, args)
+	addedPeer := false
+	if fs.NArg() == 1 {
+		var peerID protocol.DeviceID
+		if err := peerID.UnmarshalText([]byte(fs.Arg(0))); err != nil {
+			return fmt.Errorf("invalid device ID: %w", err)
 		}
-		return cobra.ExactArgs(1)(cmd, args)
-	},
-	RunE: func(cmd *cobra.Command, args []string) error {
-		addedPeer := false
-		if len(args) == 1 {
-			var peerID protocol.DeviceID
-			if err := peerID.UnmarshalText([]byte(args[0])); err != nil {
-				return fmt.Errorf("invalid device ID: %w", err)
-			}
-			var err error
-			addedPeer, err = pairPeer(peerID)
-			if err != nil {
-				return err
-			}
+		var err error
+		addedPeer, err = pairPeer(peerID)
+		if err != nil {
+			return err
 		}
+	}
 
-		if pairSyncthing {
-			printSyncthingGuide(len(args) == 1, addedPeer)
-		}
-		return nil
-	},
+	if *pairSyncthing {
+		printSyncthingGuide(fs.NArg() == 1, addedPeer)
+	}
+	return nil
 }
 
 func pairPeer(peerID protocol.DeviceID) (bool, error) {

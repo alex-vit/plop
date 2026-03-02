@@ -1,6 +1,6 @@
 //go:build linux
 
-package cmd
+package main
 
 func autoUpdate()     {}
 func cleanOldBinary() {}

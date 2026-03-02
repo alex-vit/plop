@@ -25,7 +25,7 @@ if (-not $NoBuild) {
     Write-Host "Building..."
     Push-Location $RepoRoot
     try {
-        $ldflags = "-H=windowsgui -X github.com/alex-vit/plop/cmd.Version=dev"
+        $ldflags = "-H=windowsgui -X main.version=dev"
         go build -tags noassets -ldflags $ldflags -o $OutExe .
         if ($LASTEXITCODE -ne 0) { throw "go build failed" }
     } finally {

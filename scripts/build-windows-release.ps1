@@ -47,7 +47,7 @@ try {
   $env:GOOS = "windows"
   $env:GOARCH = $Arch
   $env:CGO_ENABLED = "0"
-  $ldflags = "-X github.com/alex-vit/plop/cmd.Version=$Version -H=windowsgui"
+  $ldflags = "-X main.version=$Version -H=windowsgui"
   go build -tags noassets -ldflags $ldflags -o (Join-Path $outDir "plop.exe") .
   if ($LASTEXITCODE -ne 0) {
     throw "go build failed"

@@ -1,6 +1,6 @@
 //go:build darwin
 
-package cmd
+package main
 
 import (
 	"archive/zip"
@@ -61,7 +61,7 @@ func checkForUpdate() (latestVer, downloadURL string, err error) {
 	}
 
 	latestVer = strings.TrimPrefix(rel.TagName, "v")
-	if !isNewer(latestVer, Version) {
+	if !isNewer(latestVer, version) {
 		return "", "", nil // up to date
 	}
 

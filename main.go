@@ -1,7 +1,13 @@
 package main
 
-import "github.com/alex-vit/plop/cmd"
+import (
+	"fmt"
+	"os"
+)
 
 func main() {
-	cmd.Execute()
+	if err := run(os.Args[1:]); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }

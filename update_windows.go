@@ -1,6 +1,6 @@
 //go:build windows
 
-package cmd
+package main
 
 import (
 	"fmt"
@@ -53,7 +53,7 @@ func checkForUpdate() (latestVer, downloadURL string, err error) {
 	}
 
 	latestVer = strings.TrimPrefix(rel.TagName, "v")
-	if !isNewer(latestVer, Version) {
+	if !isNewer(latestVer, version) {
 		return "", "", nil // up to date
 	}
 

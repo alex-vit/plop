@@ -33,15 +33,17 @@ go generate ./icon
 
 Requires **Go 1.25+**. Pinned to **Syncthing v1.30.0**.
 
-Version is injected via `-ldflags "-X github.com/alex-vit/plop/cmd.Version=<tag>"` (build scripts do this automatically). Without it, displays `"dev"`.
+Version is injected via `-ldflags "-X main.version=<tag>"` (build scripts do this automatically). Without it, displays `"dev"`.
 
 ## Architecture
 
 **Two-layer design:**
 
-- **`cmd/`** — Cobra CLI commands (`init`, `pair`, `run`, `status`, `id`). Each command is a thin shell that delegates to `engine/`.
-  - `root.go` — Default (no subcommand): starts engine + system tray. Auto-inits on first run. Redirects stdout/stderr to `log.txt` in GUI mode.
-  - `run.go` — Headless/CLI mode (`plop run [folder]`): engine only, no tray. Optional `--peer` flags. When a folder arg is given, uses a per-folder isolated instance (SHA-256 hash → `instances/<4hex>/`).
+- **Root package (`main`)** — CLI dispatcher + commands (`init`, `pair`, `run`, `status`, `id`). Each command is a thin shell that delegates to `engine/`. Uses stdlib `flag` for parsing.
+  - `cli.go` — `run()` dispatcher, `--home` global flag, default command (starts engine + system tray), `setupLogFile`, `printUsage`.
+  - `cmd_run.go` — Headless/CLI mode (`plop run [folder]`): engine only, no tray. Optional `--peer` flags. When a folder arg is given, uses a per-folder isolated instance (SHA-256 hash → `instances/<4hex>/`).
+  - `cmd_init.go`, `cmd_pair.go`, `cmd_status.go`, `cmd_id.go` — Subcommand handlers.
+  - `update_*.go` — Auto-update (platform-specific). `redirect_*.go` — fd/handle redirection.
 - **`engine/`** — Wraps `syncthing.App`:
   - `engine.go` — `Engine` struct: `New()` → `Start()` → `Stop()` lifecycle. `New()` auto-initializes (certs, config, sync folder) if not already set up.
   - `cert.go` — TLS cert generation/loading (`LoadOrGenerateCert`), device ID derivation.

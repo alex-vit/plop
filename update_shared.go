@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"encoding/json"
@@ -46,7 +46,7 @@ func fetchLatestRelease() (*ghRelease, error) {
 }
 
 // isNewer reports whether latest is a higher semver than current.
-// Versions are expected as "X.Y.Z" (no "v" prefix).
+// versions are expected as "X.Y.Z" (no "v" prefix).
 func isNewer(latest, current string) bool {
 	if current == "" || current == "dev" {
 		return false // dev builds don't auto-update
@@ -84,8 +84,8 @@ func parseSemver(s string) []int {
 }
 
 func versionDisplay() string {
-	if Version == "" {
+	if version == "" {
 		return "dev"
 	}
-	return Version
+	return version
 }

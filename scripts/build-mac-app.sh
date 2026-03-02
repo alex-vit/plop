@@ -18,7 +18,7 @@ mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
 # Build the app binary inside the .app bundle.
 go build \
   -tags noassets \
-  -ldflags "-X github.com/alex-vit/plop/cmd.Version=${VERSION}" \
+  -ldflags "-X main.version=${VERSION}" \
   -o "${MACOS_DIR}/${BIN_NAME}" \
   .
 
