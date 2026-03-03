@@ -1,7 +1,7 @@
 package tray
 
 import (
-	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/alex-vit/plop/engine"
@@ -153,7 +153,7 @@ func TestFormatBytes(t *testing.T) {
 
 	for _, tc := range tests {
 		tc := tc
-		t.Run(fmt.Sprintf("%d", tc.bytes), func(t *testing.T) {
+		t.Run(strconv.FormatInt(tc.bytes, 10), func(t *testing.T) {
 			t.Parallel()
 
 			got := formatBytes(tc.bytes)

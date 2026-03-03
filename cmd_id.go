@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"path/filepath"
@@ -14,7 +15,7 @@ func runID(args []string) error {
 		return err
 	}
 	if fs.NArg() != 0 {
-		return fmt.Errorf("id takes no arguments")
+		return errors.New("id takes no arguments")
 	}
 
 	certFile := filepath.Join(homeDir, "cert.pem")

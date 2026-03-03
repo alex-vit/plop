@@ -9,6 +9,6 @@ import (
 
 func redirectFd(f *os.File) {
 	fd := int(f.Fd())
-	syscall.Dup2(fd, 1)
-	syscall.Dup2(fd, 2)
+	_ = syscall.Dup2(fd, 1)
+	_ = syscall.Dup2(fd, 2)
 }

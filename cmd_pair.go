@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"encoding/xml"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -23,7 +24,7 @@ func runPair(args []string) error {
 
 	if *pairSyncthing {
 		if fs.NArg() > 1 {
-			return fmt.Errorf("pair --syncthing accepts at most 1 argument")
+			return errors.New("pair --syncthing accepts at most 1 argument")
 		}
 	} else {
 		if fs.NArg() != 1 {

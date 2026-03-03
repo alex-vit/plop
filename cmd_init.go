@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -18,7 +19,7 @@ func runInit(args []string) error {
 		return err
 	}
 	if fs.NArg() != 0 {
-		return fmt.Errorf("init takes no arguments")
+		return errors.New("init takes no arguments")
 	}
 
 	absFolder, err := filepath.Abs(*folderPath)

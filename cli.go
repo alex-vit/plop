@@ -60,7 +60,7 @@ func run(args []string) error {
 	case "id":
 		err = runID(subargs)
 	default:
-		return fmt.Errorf("unknown command: %s\nRun 'plop --help' for usage.", subcmd)
+		return fmt.Errorf("unknown command: %s\nRun 'plop --help' for usage", subcmd)
 	}
 	if errors.Is(err, flag.ErrHelp) {
 		return nil
