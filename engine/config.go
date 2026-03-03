@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -187,6 +188,36 @@ func writeDefaultStignore(folderPath string) {
 		return
 	}
 	_ = os.WriteFile(p, []byte("// OS junk\n.DS_Store\nThumbs.db\ndesktop.ini\n"), 0o644)
+}
+
+// migrateFolderName renames the sync folder from ~/plop to ~/Plop if needed.
+// Returns true if the config was updated and needs saving.
+// On rename failure the old path is kept — the app still works fine.
+func migrateFolderName(cfg *config.Configuration) bool {
+	if len(cfg.Folders) == 0 {
+		return false
+	}
+	oldPath := cfg.Folders[0].Path
+	if filepath.Base(oldPath) != "plop" {
+		return false
+	}
+
+	newPath := filepath.Join(filepath.Dir(oldPath), "Plop")
+	log.Printf("migrate: folder path %s -> %s", oldPath, newPath)
+
+	// Rename the directory on disk if it exists.
+	if _, err := os.Stat(oldPath); err == nil {
+		if err := os.Rename(oldPath, newPath); err != nil {
+			log.Printf("migrate: rename failed: %v (keeping old path)", err)
+			return false
+		}
+		log.Printf("migrate: renamed directory on disk")
+	} else {
+		log.Printf("migrate: directory does not exist on disk, updating config path only")
+	}
+
+	cfg.Folders[0].Path = newPath
+	return true
 }
 
 func generateAPIKey() string {

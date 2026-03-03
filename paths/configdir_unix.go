@@ -14,5 +14,5 @@ func ConfigDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("config dir: %w", err)
 	}
-	return filepath.Join(base, "plop"), nil
+	return filepath.Join(base, "Plop"), nil
 }

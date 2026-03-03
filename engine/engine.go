@@ -92,10 +92,13 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 			if err != nil {
 				return nil, err
 			}
-			folderPath = filepath.Join(userHome, "plop")
+			folderPath = filepath.Join(userHome, "Plop")
 		}
 		cfg = NewConfig(myID, folderPath, allPeers)
 	}
+
+	// Migrate ~/plop → ~/Plop for existing installs.
+	migrateFolderName(&cfg)
 
 	// Always reconcile peers.
 	syncPeersConfig(&cfg, myID, allPeers)

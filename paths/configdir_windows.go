@@ -15,5 +15,5 @@ func ConfigDir() (string, error) {
 	if dir == "" {
 		return "", errors.New("config dir: %LocalAppData% is not set")
 	}
-	return filepath.Join(dir, "plop"), nil
+	return filepath.Join(dir, "Plop"), nil
 }

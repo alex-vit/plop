@@ -14,7 +14,7 @@ func runInit(args []string) error {
 	home, _ := os.UserHomeDir()
 
 	fs := flag.NewFlagSet("plop init", flag.ContinueOnError)
-	folderPath := fs.String("folder", filepath.Join(home, "plop"), "sync folder path")
+	folderPath := fs.String("folder", filepath.Join(home, "Plop"), "sync folder path")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}

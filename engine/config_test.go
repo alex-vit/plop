@@ -2,6 +2,8 @@ package engine
 
 import (
 	"net"
+	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -61,5 +63,84 @@ func TestEnsureRuntimeGUIAddressNormalizesWildcardHost(t *testing.T) {
 	}
 	if host != "127.0.0.1" {
 		t.Fatalf("host = %q, want 127.0.0.1", host)
+	}
+}
+
+func TestMigrateFolderNameRenamesExistingDir(t *testing.T) {
+	tmp := t.TempDir()
+	oldDir := filepath.Join(tmp, "plop")
+	newDir := filepath.Join(tmp, "Plop")
+	if err := os.Mkdir(oldDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Write a marker file so we can verify contents survived.
+	if err := os.WriteFile(filepath.Join(oldDir, "test.txt"), []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := stconfig.Configuration{
+		Folders: []stconfig.FolderConfiguration{{Path: oldDir}},
+	}
+	changed := migrateFolderName(&cfg)
+	if !changed {
+		t.Fatal("expected migrateFolderName to return true")
+	}
+	if cfg.Folders[0].Path != newDir {
+		t.Fatalf("path = %q, want %q", cfg.Folders[0].Path, newDir)
+	}
+	// Old dir should no longer exist (or be the same inode on case-insensitive FS).
+	if _, err := os.Stat(newDir); err != nil {
+		t.Fatalf("new dir does not exist: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(newDir, "test.txt"))
+	if err != nil {
+		t.Fatalf("reading marker file: %v", err)
+	}
+	if string(data) != "hello" {
+		t.Fatalf("marker file content = %q, want %q", data, "hello")
+	}
+}
+
+func TestMigrateFolderNameNoDirOnDisk(t *testing.T) {
+	tmp := t.TempDir()
+	oldDir := filepath.Join(tmp, "plop")
+	newDir := filepath.Join(tmp, "Plop")
+
+	cfg := stconfig.Configuration{
+		Folders: []stconfig.FolderConfiguration{{Path: oldDir}},
+	}
+	changed := migrateFolderName(&cfg)
+	if !changed {
+		t.Fatal("expected migrateFolderName to return true")
+	}
+	if cfg.Folders[0].Path != newDir {
+		t.Fatalf("path = %q, want %q", cfg.Folders[0].Path, newDir)
+	}
+}
+
+func TestMigrateFolderNameAlreadyCapitalized(t *testing.T) {
+	tmp := t.TempDir()
+	cfg := stconfig.Configuration{
+		Folders: []stconfig.FolderConfiguration{{Path: filepath.Join(tmp, "Plop")}},
+	}
+	if migrateFolderName(&cfg) {
+		t.Fatal("expected no change for already-capitalized path")
+	}
+}
+
+func TestMigrateFolderNameCustomPath(t *testing.T) {
+	tmp := t.TempDir()
+	cfg := stconfig.Configuration{
+		Folders: []stconfig.FolderConfiguration{{Path: filepath.Join(tmp, "my-sync")}},
+	}
+	if migrateFolderName(&cfg) {
+		t.Fatal("expected no change for custom path")
+	}
+}
+
+func TestMigrateFolderNameNoFolders(t *testing.T) {
+	cfg := stconfig.Configuration{}
+	if migrateFolderName(&cfg) {
+		t.Fatal("expected no change for empty folders")
 	}
 }

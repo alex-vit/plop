@@ -147,7 +147,7 @@ func defaultSyncFolderPath() string {
 	if err != nil {
 		return "plop"
 	}
-	return filepath.Join(home, "plop")
+	return filepath.Join(home, "Plop")
 }
 
 func tryLoadLocalDeviceID(homeDir string) (string, bool, error) {

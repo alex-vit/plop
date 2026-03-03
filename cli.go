@@ -39,6 +39,12 @@ func run(args []string) error {
 		return err
 	}
 
+	// Migrate lowercase config dir ("plop" → "Plop") for existing installs.
+	// Only when using the default path — custom --home paths are never touched.
+	if homeDir == defaultHome {
+		paths.MigrateConfigDir()
+	}
+
 	subcmd := global.Arg(0)
 	subargs := global.Args()
 	if len(subargs) > 0 {
@@ -76,7 +82,7 @@ Usage:
   plop <command> [flags]    Run a subcommand
 
 Commands:
-  init      Initialize plop (syncs ~/plop by default)
+  init      Initialize plop (syncs ~/Plop by default)
   pair      Add a peer device
   run       Start the sync daemon (headless)
   status    Show sync status
