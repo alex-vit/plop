@@ -4,9 +4,7 @@ Dead-simple P2P file sync. Like Dropbox, but no cloud — files go directly betw
 
 [Download v2.1.0](https://github.com/alex-vit/plop/releases/tag/v2.1.0) — **plop-setup.exe** (Windows installer) or **Plop.app** (macOS)
 
-<!-- screenshot: replace this block with your image -->
-![Screenshot](https://github.com/alex-vit/plop/assets/placeholder)
-<!-- /screenshot -->
+<img width="273" height="307" alt="Screenshot 2026-03-03 at 10 05 16" src="https://github.com/user-attachments/assets/8ded0522-d177-47a8-a9de-ed14d31e94d3" />
 
 ## How it works
 
