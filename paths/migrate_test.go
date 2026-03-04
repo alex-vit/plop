@@ -3,7 +3,10 @@ package paths
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestMigrateConfigDir_OldExists(t *testing.T) {
@@ -35,6 +38,47 @@ func TestMigrateConfigDir_OldNotExists(t *testing.T) {
 
 	if _, err := os.Stat(newDir); !os.IsNotExist(err) {
 		t.Fatalf("expected new dir to not exist, got: %v", err)
+	}
+}
+
+func TestMigrateConfigDir_OpenFileHandle(t *testing.T) {
+	tmp := t.TempDir()
+	oldDir := filepath.Join(tmp, "plop")
+	newDir := filepath.Join(tmp, "Plop")
+
+	if err := os.Mkdir(oldDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	// Open a file handle inside the directory (simulates running exe or open log).
+	f, err := os.Create(filepath.Join(oldDir, "log.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS == "windows" {
+		// On Windows, open handles block directory renames.
+		// Close after a delay so the retry loop in RobustRename can succeed.
+		go func() {
+			time.Sleep(150 * time.Millisecond)
+			f.Close()
+		}()
+	} else {
+		defer f.Close()
+	}
+
+	migrateConfigDir(oldDir, newDir)
+
+	entries, err := os.ReadDir(filepath.Dir(newDir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found string
+	for _, e := range entries {
+		if strings.EqualFold(e.Name(), "plop") {
+			found = e.Name()
+		}
+	}
+	if found != "Plop" {
+		t.Fatalf("directory name = %q, want %q", found, "Plop")
 	}
 }
 

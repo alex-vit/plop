@@ -15,7 +15,7 @@ go build -tags noassets -o plop .
 # macOS app bundle → out/Plop.app
 ./scripts/build-mac-app.sh
 
-# Windows portable exe + Inno Setup installer → out/plop.exe + out/plop-setup.exe
+# Windows portable exe + Inno Setup installer → out/Plop.exe + out/plop-setup.exe
 pwsh ./scripts/build-windows-release.ps1 -Version vX.Y.Z
 
 # All tests (unit + E2E)
@@ -54,12 +54,12 @@ Version is injected via `-ldflags "-X main.version=<tag>"` (build scripts do thi
   - `status_snapshot.go` — `StatusState` constants + `StatusSnapshot` struct.
 - **`tray/`** — System tray UI (Open Plop Folder, Copy My ID, Add or Edit Peers, Open Config Folder, Exit). Double-click opens plop folder on Windows/Linux. `tray.Run()` blocks; `systray.Quit()` unblocks it.
   - `status_monitor.go` — Reads `StatusSnapshot` channel, updates tray icon (traffic-light) and tooltip.
-- **`paths/`** — Platform-specific config directory: macOS `~/Library/Application Support/plop`, Windows `%LocalAppData%\plop` (not `%AppData%`), Linux `~/.config/plop`.
+- **`paths/`** — Platform-specific config directory: macOS `~/Library/Application Support/Plop`, Windows `%LocalAppData%\Plop` (not `%AppData%`), Linux `~/.config/Plop`. `RobustRename` helper for Windows retry logic.
 - **`autostart/`** — macOS LaunchAgent plist, Windows registry (`HKCU\...\Run`). Linux stub (unsupported, menu item hidden).
 - **`icon/`** — Embedded `icon.png`/`icon.ico` via `//go:embed`. `status_icon.go` generates traffic-light status icons at runtime (binary-opaque pixels, no anti-aliasing).
 - **`notes/`** — Development notes. "Notes" means these local project notes, not private notes.
 
-**Data directory** (overridable with `--home`): macOS `~/Library/Application Support/plop`, Windows `%LocalAppData%\plop`, Linux `~/.config/plop`. Contains `cert.pem`, `key.pem`, `config.xml`, `peers.txt`, `status.json`, `log.txt` (GUI mode), `db/`.
+**Data directory** (overridable with `--home`): macOS `~/Library/Application Support/Plop`, Windows `%LocalAppData%\Plop`, Linux `~/.config/Plop`. Contains `cert.pem`, `key.pem`, `config.xml`, `peers.txt`, `status.json`, `log.txt` (GUI mode), `db/`.
 
 **Startup flow:** `engine.New()` auto-creates data dir, certs, and default config if missing → early suture supervisor starts config wrapper + event logger → `engine.Start()` → tray blocks on `systray.Run()` → Exit/signal/engine-exit calls `systray.Quit()` → `defer eng.Stop()` cleans up.
 
@@ -87,4 +87,5 @@ CI (`.github/workflows/release.yml`): tag push triggers parallel Windows + macOS
 - Use `syncthing.LoadConfigAtStartup()` to load config (handles migrations and defaults).
 - Use `backend.TuningAuto` for `backend.Open()`, not `config.TuningAuto`.
 - Syncthing's `lib/` API is not officially stable — stay pinned to a release tag.
-- **Windows installer uses `%LocalAppData%`** — must match the `paths/` package; `%AppData%` (roaming) is wrong.
+- **Windows installer uses `%LocalAppData%\Plop`** — must match the `paths/` package; `%AppData%` (roaming) is wrong.
+- **Windows directory renames can fail** with "Access is denied" when file handles are open — `paths.RobustRename` retries with backoff. `Engine.Stop()` retries the sync folder rename after Syncthing releases handles.

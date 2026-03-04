@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alex-vit/plop/paths"
 	"github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/events"
 	"github.com/syncthing/syncthing/lib/protocol"
@@ -207,7 +208,7 @@ func migrateFolderName(cfg *config.Configuration) bool {
 
 	// Rename the directory on disk if it exists.
 	if _, err := os.Stat(oldPath); err == nil {
-		if err := os.Rename(oldPath, newPath); err != nil {
+		if err := paths.RobustRename(oldPath, newPath); err != nil {
 			log.Printf("migrate: rename failed: %v (keeping old path)", err)
 			return false
 		}

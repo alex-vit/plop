@@ -15,27 +15,46 @@ PrivilegesRequired=lowest
 OutputDir=out
 OutputBaseFilename=plop-setup
 SetupIconFile=icon\icon.ico
-UninstallDisplayIcon={app}\plop.exe
+UninstallDisplayIcon={app}\Plop.exe
 Compression=lzma2
 SolidCompression=yes
 CloseApplications=yes
 WizardStyle=modern
 
 [Files]
-Source: "out\plop.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "out\Plop.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Plop"; Filename: "{app}\plop.exe"
+Name: "{group}\Plop"; Filename: "{app}\Plop.exe"
 Name: "{group}\Uninstall Plop"; Filename: "{uninstallexe}"
 
 [Tasks]
 Name: "autostart"; Description: "Start with Windows"; GroupDescription: "Additional options:"
 
 [Registry]
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Plop"; ValueData: """{app}\plop.exe"""; Flags: uninsdeletevalue; Tasks: autostart
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Plop"; ValueData: """{app}\Plop.exe"""; Flags: uninsdeletevalue; Tasks: autostart
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
 
 [Run]
-Filename: "{app}\plop.exe"; Description: "Launch Plop"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Plop.exe"; Description: "Launch Plop"; Flags: nowait postinstall skipifsilent
+
+[Code]
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  OldDir, NewDir: String;
+begin
+  if CurStep = ssPostInstall then begin
+    { Rename config directory: plop -> Plop }
+    OldDir := ExpandConstant('{localappdata}\plop');
+    NewDir := ExpandConstant('{localappdata}\Plop');
+    if DirExists(OldDir) then
+      RenameFile(OldDir, NewDir);
+    { Rename default sync folder: ~/plop -> ~/Plop }
+    OldDir := ExpandConstant('{%USERPROFILE}\plop');
+    NewDir := ExpandConstant('{%USERPROFILE}\Plop');
+    if DirExists(OldDir) then
+      RenameFile(OldDir, NewDir);
+  end;
+end;

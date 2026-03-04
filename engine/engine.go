@@ -191,9 +191,24 @@ func (e *Engine) Stop() {
 		e.statusSvc.Stop()
 	}
 	e.app.Stop(svcutil.ExitSuccess)
+
+	// Retry sync folder rename — Syncthing file handles are now released.
+	e.retryFolderMigration()
+
 	e.earlyServiceStop()
 	if e.earlyServiceDone != nil {
 		<-e.earlyServiceDone
+	}
+}
+
+// retryFolderMigration re-attempts the plop → Plop sync folder rename.
+// Called during Stop() after Syncthing releases all file handles.
+func (e *Engine) retryFolderMigration() {
+	cfg := e.cfgWrapper.RawCopy()
+	if migrateFolderName(&cfg) {
+		if err := SaveConfig(e.homeDir, cfg); err != nil {
+			log.Printf("post-stop folder migration: %v", err)
+		}
 	}
 }
 

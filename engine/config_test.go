@@ -4,8 +4,11 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 	"testing"
+	"time"
 
 	stconfig "github.com/syncthing/syncthing/lib/config"
 )
@@ -98,6 +101,54 @@ func TestMigrateFolderNameRenamesExistingDir(t *testing.T) {
 	}
 	if string(data) != "hello" {
 		t.Fatalf("marker file content = %q, want %q", data, "hello")
+	}
+}
+
+func TestMigrateFolderNameOpenFileHandle(t *testing.T) {
+	tmp := t.TempDir()
+	oldDir := filepath.Join(tmp, "plop")
+	if err := os.Mkdir(oldDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Hold an open file handle inside the directory (simulates Syncthing or
+	// another process having a file open in the sync folder).
+	f, err := os.Create(filepath.Join(oldDir, "lockfile.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS == "windows" {
+		// On Windows, open handles block directory renames.
+		// Close after a delay so the retry loop can succeed.
+		go func() {
+			time.Sleep(150 * time.Millisecond)
+			f.Close()
+		}()
+	} else {
+		defer f.Close()
+	}
+
+	cfg := stconfig.Configuration{
+		Folders: []stconfig.FolderConfiguration{{Path: oldDir}},
+	}
+	changed := migrateFolderName(&cfg)
+	if !changed {
+		t.Fatal("expected migrateFolderName to return true")
+	}
+
+	// Verify actual directory name on disk (not just case-insensitive access).
+	entries, err := os.ReadDir(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found string
+	for _, e := range entries {
+		if strings.EqualFold(e.Name(), "plop") {
+			found = e.Name()
+		}
+	}
+	if found != "Plop" {
+		t.Fatalf("directory name on disk = %q, want %q", found, "Plop")
 	}
 }
 

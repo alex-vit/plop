@@ -18,6 +18,21 @@ On case-insensitive filesystems (macOS HFS+/APFS default, Windows NTFS), `os.Ren
 
 The folder ID (`"default"`) is unchanged, so peer connectivity is unaffected.
 
+### Windows "Access is denied" on rename
+
+`os.Rename` of a directory fails on Windows when any file handle is open inside it — Go opens files without `FILE_SHARE_DELETE`. The log showed:
+```
+rename C:\Users\alex\plop C:\Users\alex\Plop: Access is denied.
+```
+
+Possible handle holders: Syncthing itself (DB, index files), Windows Search indexer, antivirus scanners, or transient handles from a recently exited process.
+
+**Fix:** `paths.RobustRename` wraps `os.Rename` with a retry loop on Windows — up to 5 attempts with exponential backoff (0, 100ms, 200ms, 400ms, 800ms ≈ 1.5s total). Used for both the config dir and sync folder renames.
+
+Additionally, `Engine.Stop()` retries the sync folder rename after `app.Stop()` — at that point Syncthing has released all its file handles, so the rename almost always succeeds.
+
+The Windows installer (`installer.iss`) also renames both directories in a `[Code]` post-install step, after `CloseApplications` has killed the old process. This is belt-and-suspenders for installer-based upgrades.
+
 ## Config directory rename
 
 The config/data directory was also renamed from `plop` to `Plop` (e.g. `~/Library/Application Support/Plop` on macOS). `paths.MigrateConfigDir()` handles existing installs:
@@ -42,6 +57,17 @@ Sync folder:
 Config directory:
 - `paths/configdir_unix.go` — `"plop"` → `"Plop"`
 - `paths/configdir_windows.go` — `"plop"` → `"Plop"`
-- `paths/migrate.go` — new `MigrateConfigDir()` + `migrateConfigDir()` helper
-- `paths/migrate_test.go` — tests: old exists → renamed, old missing → no-op, both exist → skip
+- `paths/migrate.go` — `MigrateConfigDir()` + `migrateConfigDir()` helper + `RobustRename()` with Windows retry
+- `paths/migrate_test.go` — tests: old exists → renamed, old missing → no-op, both exist → skip, open handle → retry
 - `cli.go` — calls `paths.MigrateConfigDir()` after flag parsing when using default home
+
+Retry + shutdown hook:
+- `engine/config.go` — `migrateFolderName` uses `paths.RobustRename`
+- `engine/engine.go` — `Stop()` retries folder migration after `app.Stop()`
+
+Exe capitalization (`plop.exe` → `Plop.exe`):
+- `installer.iss` — exe refs + `[Code]` post-install rename for config + sync dirs
+- `scripts/build-windows-release.ps1` — output `Plop.exe`
+- `scripts/restart-windows-app.ps1` — `Plop.exe`
+- `.github/workflows/release.yml` — source `Plop.exe`
+- `update_windows_test.go` — `Plop.exe`

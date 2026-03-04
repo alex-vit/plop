@@ -4,6 +4,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
+	"time"
 )
 
 // MigrateConfigDir renames the old lowercase config directory ("plop") to the
@@ -36,7 +38,32 @@ func migrateConfigDir(oldDir, newDir string) {
 		return
 	}
 
-	if err := os.Rename(oldDir, newDir); err != nil {
+	if err := RobustRename(oldDir, newDir); err != nil {
 		log.Printf("config dir migration: %v", err)
 	}
+}
+
+// RobustRename renames oldPath to newPath. On Windows, it retries with
+// exponential backoff (up to ~1.5s total) to handle transient "Access is denied"
+// errors caused by open file handles from indexers, antivirus, or recently
+// exited processes.
+func RobustRename(oldPath, newPath string) error {
+	err := os.Rename(oldPath, newPath)
+	if err == nil || runtime.GOOS != "windows" {
+		return err
+	}
+	for _, d := range []time.Duration{
+		100 * time.Millisecond,
+		200 * time.Millisecond,
+		400 * time.Millisecond,
+		800 * time.Millisecond,
+	} {
+		log.Printf("rename %s → %s: retrying in %v (%v)", filepath.Base(oldPath), filepath.Base(newPath), d, err)
+		time.Sleep(d)
+		err = os.Rename(oldPath, newPath)
+		if err == nil {
+			return nil
+		}
+	}
+	return err
 }

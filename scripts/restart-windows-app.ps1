@@ -8,9 +8,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $RepoRoot   = Split-Path -Parent $PSScriptRoot
-$OutExe     = Join-Path $RepoRoot "out\plop.exe"
+$OutExe     = Join-Path $RepoRoot "out\Plop.exe"
 $InstallDir = Join-Path $env:LOCALAPPDATA "Plop"
-$InstallExe = Join-Path $InstallDir "plop.exe"
+$InstallExe = Join-Path $InstallDir "Plop.exe"
 
 # 1. Kill running instance (best effort — not an error if not running)
 $proc = Get-Process -Name plop -ErrorAction SilentlyContinue

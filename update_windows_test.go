@@ -8,7 +8,7 @@ import (
 
 func TestApplyUpdate(t *testing.T) {
 	dir := t.TempDir()
-	exe := filepath.Join(dir, "plop.exe")
+	exe := filepath.Join(dir, "Plop.exe")
 	tmp := exe + ".tmp"
 
 	_ = os.WriteFile(exe, []byte("old"), 0o755) //nolint:errcheck
@@ -41,7 +41,7 @@ func TestApplyUpdate(t *testing.T) {
 
 func TestApplyUpdateRollback(t *testing.T) {
 	dir := t.TempDir()
-	exe := filepath.Join(dir, "plop.exe")
+	exe := filepath.Join(dir, "Plop.exe")
 
 	_ = os.WriteFile(exe, []byte("old"), 0o755) //nolint:errcheck
 

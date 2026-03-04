@@ -48,7 +48,7 @@ try {
   $env:GOARCH = $Arch
   $env:CGO_ENABLED = "0"
   $ldflags = "-X main.version=$Version -H=windowsgui"
-  go build -tags noassets -ldflags $ldflags -o (Join-Path $outDir "plop.exe") .
+  go build -tags noassets -ldflags $ldflags -o (Join-Path $outDir "Plop.exe") .
   if ($LASTEXITCODE -ne 0) {
     throw "go build failed"
   }
@@ -73,7 +73,7 @@ try {
     throw "Installer build failed"
   }
 
-  $exePath = Join-Path $outDir "plop.exe"
+  $exePath = Join-Path $outDir "Plop.exe"
   $setupPath = Join-Path $outDir "plop-setup.exe"
   if (-not (Test-Path $exePath)) {
     throw "Missing executable: $exePath"
