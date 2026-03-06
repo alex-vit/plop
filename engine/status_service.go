@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"log"
 	"sort"
 	"strings"
 	"sync"
@@ -33,6 +34,7 @@ type statusConfigSource interface {
 type statusRuntime interface {
 	FolderState(folderID string) (string, error)
 	NeedTotalItems(folderID string) (int, error)
+	NeedFolderFiles(folderID string, max int) ([]string, error)
 	IsConnectedTo(deviceID protocol.DeviceID) bool
 	DeviceLastSeen(deviceID protocol.DeviceID) time.Time
 	DeviceNeedBytes(folderID string, deviceID protocol.DeviceID) int64
@@ -89,6 +91,26 @@ func (r *syncthingStatusRuntime) NeedTotalItems(folderID string) (int, error) {
 	return counts.TotalItems(), nil
 }
 
+func (r *syncthingStatusRuntime) NeedFolderFiles(folderID string, max int) ([]string, error) {
+	if r.internals == nil {
+		return nil, errInternalsUnavailable
+	}
+	progress, queued, rest, err := r.internals.NeedFolderFiles(folderID, 0, max)
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	for _, list := range [3][]protocol.FileInfo{progress, queued, rest} {
+		for _, fi := range list {
+			paths = append(paths, fi.Name)
+			if len(paths) >= max {
+				return paths, nil
+			}
+		}
+	}
+	return paths, nil
+}
+
 func (r *syncthingStatusRuntime) IsConnectedTo(deviceID protocol.DeviceID) bool {
 	if r.internals == nil {
 		return false
@@ -136,9 +158,10 @@ type statusService struct {
 	pollInterval time.Duration
 	now          func() time.Time
 
-	running bool
-	stopCh  chan struct{}
-	doneCh  chan struct{}
+	running     bool
+	loggedStuck bool
+	stopCh      chan struct{}
+	doneCh      chan struct{}
 }
 
 func newStatusService(cfg statusConfigSource, runtime statusRuntime, eventSource statusEventSource, localID protocol.DeviceID) *statusService {
@@ -243,6 +266,19 @@ func (s *statusService) run(stopCh <-chan struct{}, doneCh chan<- struct{}, poll
 
 func (s *statusService) refresh() {
 	next := s.computeSnapshot()
+
+	stuck := next.FolderState == "idle" && next.NeedTotalItems > 0
+	if stuck && !s.loggedStuck {
+		log.Printf("sync: folder is idle but %d items can't sync", next.NeedTotalItems)
+		for _, p := range next.NeedPaths {
+			log.Printf("sync:   stuck: %s", p)
+		}
+		log.Printf("sync: to fix, delete stuck paths from your sync folder or add matching .stignore patterns")
+		s.loggedStuck = true
+	} else if !stuck {
+		s.loggedStuck = false
+	}
+
 	stored, changed := s.setSnapshot(next)
 	if changed {
 		s.publish(stored)
@@ -326,6 +362,12 @@ func (s *statusService) computeSnapshot() StatusSnapshot {
 	snapshot.Peers = buildPeerStatuses(cfg.Devices, s.localID, folderID, s.runtime)
 	snapshot.ConnectedPeers, snapshot.TotalPeers = countPeers(snapshot.Peers)
 	snapshot.State = deriveStatusState(folderState, needTotalItems, snapshot.ConnectedPeers, snapshot.TotalPeers)
+
+	if folderState == "idle" && needTotalItems > 0 {
+		if paths, err := s.runtime.NeedFolderFiles(folderID, 10); err == nil && len(paths) > 0 {
+			snapshot.NeedPaths = paths
+		}
+	}
 
 	return snapshot
 }

@@ -99,6 +99,15 @@ func printInternalStatus(snapshot engine.StatusSnapshot, cfg config.Configuratio
 
 	if snapshot.NeedTotalItems > 0 {
 		fmt.Printf("Need:      %d items\n", snapshot.NeedTotalItems)
+		if snapshot.FolderState == "idle" && len(snapshot.NeedPaths) > 0 {
+			fmt.Printf("\nStuck items (folder idle, these can't sync):\n")
+			for _, p := range snapshot.NeedPaths {
+				fmt.Printf("  %s\n", p)
+			}
+			fmt.Printf("\nFix: delete these paths from your sync folder,\n")
+			fmt.Printf("     or add matching patterns to .stignore.\n")
+			fmt.Printf("     See log.txt for details.\n")
+		}
 	}
 
 	if snapshot.TotalPeers > 0 {

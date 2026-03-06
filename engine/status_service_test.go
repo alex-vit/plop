@@ -166,6 +166,7 @@ type fakeStatusRuntime struct {
 	folderErr      error
 	needTotalItems int
 	needErr        error
+	needPaths      []string
 	connected      map[protocol.DeviceID]bool
 }
 
@@ -179,6 +180,15 @@ func (f *fakeStatusRuntime) NeedTotalItems(_ string) (int, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	return f.needTotalItems, f.needErr
+}
+
+func (f *fakeStatusRuntime) NeedFolderFiles(_ string, max int) ([]string, error) {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	if len(f.needPaths) <= max {
+		return f.needPaths, nil
+	}
+	return f.needPaths[:max], nil
 }
 
 func (f *fakeStatusRuntime) IsConnectedTo(deviceID protocol.DeviceID) bool {

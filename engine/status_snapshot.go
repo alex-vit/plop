@@ -27,6 +27,7 @@ type StatusSnapshot struct {
 	FolderID       string       `json:"folderID,omitempty"`
 	FolderState    string       `json:"folderState,omitempty"`
 	NeedTotalItems int          `json:"needTotalItems"`
+	NeedPaths      []string     `json:"needPaths,omitempty"`
 	ConnectedPeers int          `json:"connectedPeers"`
 	TotalPeers     int          `json:"totalPeers"`
 	Peers          []PeerStatus `json:"peers,omitempty"`
