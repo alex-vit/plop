@@ -221,3 +221,35 @@ func TestWritePeersFileRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadPeersFileOrEmptyMissing(t *testing.T) {
+	t.Parallel()
+
+	peers, missing, err := loadPeersFileOrEmpty(filepath.Join(t.TempDir(), "peers.txt"))
+	if err != nil {
+		t.Fatalf("loadPeersFileOrEmpty: %v", err)
+	}
+	if !missing {
+		t.Fatal("missing = false, want true")
+	}
+	if len(peers) != 0 {
+		t.Fatalf("peers = %v, want empty", peers)
+	}
+}
+
+func TestEnsurePeersFileCreatesRequestedContents(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "peers.txt")
+	if err := ensurePeersFile(path, nil); err != nil {
+		t.Fatalf("ensurePeersFile(nil): %v", err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if len(data) != 0 {
+		t.Fatalf("len(data) = %d, want 0", len(data))
+	}
+}

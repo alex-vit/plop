@@ -30,6 +30,10 @@ Expose sync health from Syncthing internals through stable in-process and local 
 6. Add optional local IPC status endpoint for out-of-process clients (`plop status`), either:
    - Unix socket / named pipe, or
    - atomically written `status.json` heartbeat in `--home`.
+7. Treat heartbeat write failures as diagnosable operational errors:
+   - log the first failure,
+   - keep retrying on the normal interval,
+   - log once when writes recover.
 
 # Data Model
 
@@ -126,3 +130,4 @@ Completed on 2026-02-26:
 1. No code path reads `log.txt` for status decisions.
 2. Tray status continues to update through sleep/wake cycles.
 3. `plop status` works even if logs are disabled or rotated.
+4. Heartbeat write failures are visible in logs without spamming every refresh tick.

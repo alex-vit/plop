@@ -3,8 +3,10 @@ package engine
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -76,6 +78,48 @@ func TestWriteStatusSnapshotFileAtomicWrite(t *testing.T) {
 	got := readStatusSnapshotFromFile(t, path)
 	if got.State != StatusStateSynced {
 		t.Fatalf("state = %q, want %q", got.State, StatusStateSynced)
+	}
+}
+
+func TestStatusFileWriterLogsFailureTransitionAndRecovery(t *testing.T) {
+	path := filepath.Join(t.TempDir(), StatusFileName)
+
+	writer := newStatusFileWriter(path, func() StatusSnapshot {
+		return StatusSnapshot{
+			State:     StatusStateSynced,
+			UpdatedAt: time.Now().UTC(),
+		}
+	})
+
+	var logs []string
+	writer.logf = func(format string, args ...any) {
+		logs = append(logs, fmt.Sprintf(format, args...))
+	}
+
+	attempt := 0
+	writer.writeFile = func(_ string, _ StatusSnapshot) error {
+		attempt++
+		if attempt <= 2 {
+			return errors.New("disk full")
+		}
+		return nil
+	}
+
+	writeFailed := false
+	lastWriteErr := ""
+
+	writer.writeSnapshot(&writeFailed, &lastWriteErr)
+	writer.writeSnapshot(&writeFailed, &lastWriteErr)
+	writer.writeSnapshot(&writeFailed, &lastWriteErr)
+
+	if len(logs) != 2 {
+		t.Fatalf("log count = %d, want 2 (%v)", len(logs), logs)
+	}
+	if !strings.Contains(logs[0], "failed") {
+		t.Fatalf("first log = %q, want failure message", logs[0])
+	}
+	if !strings.Contains(logs[1], "recovered") {
+		t.Fatalf("second log = %q, want recovery message", logs[1])
 	}
 }
 

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"sort"
 	"strings"
@@ -364,12 +365,21 @@ func (s *statusService) computeSnapshot() StatusSnapshot {
 	snapshot.State = deriveStatusState(folderState, needTotalItems, snapshot.ConnectedPeers, snapshot.TotalPeers)
 
 	if folderState == "idle" && needTotalItems > 0 {
-		if paths, err := s.runtime.NeedFolderFiles(folderID, 10); err == nil && len(paths) > 0 {
+		if paths, err := safeNeedFolderFiles(s.runtime, folderID, 10); err == nil && len(paths) > 0 {
 			snapshot.NeedPaths = paths
 		}
 	}
 
 	return snapshot
+}
+
+func safeNeedFolderFiles(rt statusRuntime, folderID string, max int) (paths []string, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic reading need folder files: %v", r)
+		}
+	}()
+	return rt.NeedFolderFiles(folderID, max)
 }
 
 func buildPeerStatuses(devices []config.DeviceConfiguration, localID protocol.DeviceID, folderID string, rt statusRuntime) []PeerStatus {

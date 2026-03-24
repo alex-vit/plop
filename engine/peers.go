@@ -15,6 +15,8 @@ type PeerEntry struct {
 	Name string
 }
 
+const peersFileTemplate = "# Add one device ID per line.\n# Optionally add a friendly name after the ID or as a comment above it:\n# XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX Mom's iPad\n# # Mom's iPad\n# XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX\n"
+
 // ParsePeersFile reads a peers.txt file and returns the peer entries found.
 // Blank lines and malformed lines are ignored.
 //
@@ -96,4 +98,25 @@ func AppendPeersFile(path string, id protocol.DeviceID) error {
 	defer func() { _ = f.Close() }()
 	_, err = f.WriteString(id.String() + "\n")
 	return err
+}
+
+func ensurePeersFile(path string, contents []byte) error {
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	return os.WriteFile(path, contents, 0o644)
+}
+
+func loadPeersFileOrEmpty(path string) (peers []PeerEntry, missing bool, err error) {
+	peers, err = ParsePeersFile(path)
+	if err == nil {
+		return peers, false, nil
+	}
+	if os.IsNotExist(err) {
+		return nil, true, nil
+	}
+	return nil, false, err
 }

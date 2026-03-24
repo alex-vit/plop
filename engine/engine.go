@@ -70,8 +70,8 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 
 	// Ensure peers.txt exists so "Open Settings" always has a file to open.
 	peersFile := filepath.Join(homeDir, "peers.txt")
-	if _, err := os.Stat(peersFile); os.IsNotExist(err) {
-		_ = os.WriteFile(peersFile, []byte("# Add one device ID per line.\n# Optionally add a friendly name after the ID or as a comment above it:\n# XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX Mom's iPad\n# # Mom's iPad\n# XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX\n"), 0o644)
+	if err := ensurePeersFile(peersFile, []byte(peersFileTemplate)); err != nil {
+		return nil, fmt.Errorf("ensuring peers.txt exists: %w", err)
 	}
 
 	// Collect all desired peers from peers.txt.
@@ -253,11 +253,9 @@ func (e *Engine) SyncFolder() string {
 // syncPeers reads peers.txt and updates the running config to match.
 func (e *Engine) syncPeers() {
 	peersFile := e.PeersFilePath()
-	desired, err := ParsePeersFile(peersFile)
+	desired, missing, err := loadPeersFileOrEmpty(peersFile)
 	if err != nil {
-		if !os.IsNotExist(err) {
-			log.Printf("peers: reading %s: %v", peersFile, err)
-		}
+		log.Printf("peers: reading %s: %v", peersFile, err)
 		return
 	}
 
@@ -266,6 +264,15 @@ func (e *Engine) syncPeers() {
 		syncPeersConfig(cfg, myID, desired)
 	}); err != nil {
 		log.Printf("peers: updating config: %v", err)
+		return
+	}
+
+	if missing {
+		if err := ensurePeersFile(peersFile, nil); err != nil {
+			log.Printf("peers: recreating empty %s: %v", peersFile, err)
+		} else {
+			log.Printf("peers: recreated empty %s", peersFile)
+		}
 	}
 }
 
@@ -304,7 +311,7 @@ func (e *Engine) watchPeers(ctx context.Context) {
 	// Watch the parent directory — watching a single file that may not exist
 	// yet or gets recreated (editor save) is unreliable on some platforms.
 	dir := filepath.Dir(peersFile)
-	if err := notify.Watch(dir, c, notify.Create|notify.Write|notify.Rename); err != nil {
+	if err := notify.Watch(dir, c, notify.Create|notify.Write|notify.Rename|notify.Remove); err != nil {
 		log.Printf("peers: watching %s: %v", dir, err)
 		return
 	}

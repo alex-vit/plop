@@ -53,6 +53,9 @@ Names are stored in `config.DeviceConfiguration.Name` (Syncthing's own field) an
 through `PeerStatus.Name`. The tray falls back to `ShortID` when `Name` is empty.
 
 `syncPeersConfig` updates the name in config whenever peers.txt changes (live reload).
+If `peers.txt` is deleted while plop is running, the desired peer set becomes empty immediately,
+configured peers are removed from the live config, and plop recreates an empty `peers.txt`
+so the tray action always has a file to open.
 
 ## Per-Peer Status Labels (2026-03-02)
 

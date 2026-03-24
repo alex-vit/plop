@@ -2,6 +2,7 @@ package engine
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -17,6 +18,8 @@ type statusFileWriter struct {
 	snapshot func() StatusSnapshot
 
 	writeInterval time.Duration
+	writeFile     func(path string, snapshot StatusSnapshot) error
+	logf          func(format string, args ...any)
 
 	mu      sync.Mutex
 	running bool
@@ -29,6 +32,8 @@ func newStatusFileWriter(path string, snapshot func() StatusSnapshot) *statusFil
 		path:          path,
 		snapshot:      snapshot,
 		writeInterval: defaultStatusFileWriteInterval,
+		writeFile:     writeStatusSnapshotFile,
+		logf:          log.Printf,
 	}
 }
 
@@ -74,7 +79,9 @@ func (w *statusFileWriter) Stop() {
 func (w *statusFileWriter) run(stopCh <-chan struct{}, doneCh chan<- struct{}, writeInterval time.Duration) {
 	defer close(doneCh)
 
-	_ = writeStatusSnapshotFile(w.path, w.snapshot())
+	writeFailed := false
+	lastWriteErr := ""
+	w.writeSnapshot(&writeFailed, &lastWriteErr)
 
 	ticker := time.NewTicker(writeInterval)
 	defer ticker.Stop()
@@ -84,9 +91,28 @@ func (w *statusFileWriter) run(stopCh <-chan struct{}, doneCh chan<- struct{}, w
 		case <-stopCh:
 			return
 		case <-ticker.C:
-			_ = writeStatusSnapshotFile(w.path, w.snapshot())
+			w.writeSnapshot(&writeFailed, &lastWriteErr)
 		}
 	}
+}
+
+func (w *statusFileWriter) writeSnapshot(writeFailed *bool, lastWriteErr *string) {
+	err := w.writeFile(w.path, w.snapshot())
+	if err != nil {
+		errText := err.Error()
+		if !*writeFailed || *lastWriteErr != errText {
+			w.logf("status: writing %s failed: %v", filepath.Base(w.path), err)
+		}
+		*writeFailed = true
+		*lastWriteErr = errText
+		return
+	}
+
+	if *writeFailed {
+		w.logf("status: writing %s recovered", filepath.Base(w.path))
+	}
+	*writeFailed = false
+	*lastWriteErr = ""
 }
 
 func writeStatusSnapshotFile(path string, snapshot StatusSnapshot) error {

@@ -137,6 +137,36 @@ func TestStatusServicePublishesUpdatesWithMonotonicTimestamps(t *testing.T) {
 	}
 }
 
+func TestComputeSnapshotRecoversFromNeedFolderFilesPanic(t *testing.T) {
+	t.Parallel()
+
+	cfgSource := &fakeStatusConfigSource{
+		cfg: config.Configuration{
+			Folders: []config.FolderConfiguration{
+				{ID: "default"},
+			},
+		},
+	}
+	runtime := &fakeStatusRuntime{
+		folderState:    "idle",
+		needTotalItems: 3,
+		needFilesPanic: "boom",
+	}
+
+	svc := newStatusService(cfgSource, runtime, nil, protocol.EmptyDeviceID)
+	snapshot := svc.computeSnapshot()
+
+	if snapshot.State != StatusStateSyncing {
+		t.Fatalf("snapshot state = %q, want %q", snapshot.State, StatusStateSyncing)
+	}
+	if len(snapshot.NeedPaths) != 0 {
+		t.Fatalf("snapshot NeedPaths = %v, want none", snapshot.NeedPaths)
+	}
+	if snapshot.Error != "" {
+		t.Fatalf("snapshot Error = %q, want empty", snapshot.Error)
+	}
+}
+
 func waitForSnapshot(t *testing.T, ch <-chan StatusSnapshot) StatusSnapshot {
 	t.Helper()
 
@@ -167,6 +197,7 @@ type fakeStatusRuntime struct {
 	needTotalItems int
 	needErr        error
 	needPaths      []string
+	needFilesPanic any
 	connected      map[protocol.DeviceID]bool
 }
 
@@ -185,6 +216,9 @@ func (f *fakeStatusRuntime) NeedTotalItems(_ string) (int, error) {
 func (f *fakeStatusRuntime) NeedFolderFiles(_ string, max int) ([]string, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
+	if f.needFilesPanic != nil {
+		panic(f.needFilesPanic)
+	}
 	if len(f.needPaths) <= max {
 		return f.needPaths, nil
 	}
