@@ -12,6 +12,7 @@ import (
 	"github.com/syncthing/notify"
 	"github.com/syncthing/syncthing/lib/config"
 	"github.com/syncthing/syncthing/lib/events"
+	"github.com/syncthing/syncthing/lib/locations"
 	"github.com/syncthing/syncthing/lib/protocol"
 	"github.com/syncthing/syncthing/lib/svcutil"
 	"github.com/syncthing/syncthing/lib/syncthing"
@@ -162,6 +163,9 @@ func New(homeDir string, folderPath string, peers []protocol.DeviceID) (*Engine,
 }
 
 func (e *Engine) Start() error {
+	if err := configureSyncthingRuntimeLocations(e.homeDir); err != nil {
+		return err
+	}
 	if err := e.app.Start(); err != nil {
 		return err
 	}
@@ -173,6 +177,16 @@ func (e *Engine) Start() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	e.peerWatchStop = cancel
 	go e.watchPeers(ctx)
+	return nil
+}
+
+func configureSyncthingRuntimeLocations(homeDir string) error {
+	if err := locations.Set(locations.HTTPSCertFile, filepath.Join(homeDir, "https-cert.pem")); err != nil {
+		return fmt.Errorf("setting Syncthing HTTPS cert path: %w", err)
+	}
+	if err := locations.Set(locations.HTTPSKeyFile, filepath.Join(homeDir, "https-key.pem")); err != nil {
+		return fmt.Errorf("setting Syncthing HTTPS key path: %w", err)
+	}
 	return nil
 }
 
